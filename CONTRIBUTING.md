@@ -51,63 +51,143 @@ If your skill is specialized, community-contributed, or niche, it's better suite
 
 ## Development Setup
 
-### Prerequisites
+### 前置要求
 
-| Requirement | Notes |
-|-------------|-------|
-| **Git** | With `--recurse-submodules` support |
-| **Python 3.11+** | uv will install it if missing |
-| **uv** | Fast Python package manager ([install](https://docs.astral.sh/uv/)) |
-| **Node.js 18+** | Optional — needed for browser tools and WhatsApp bridge |
+| 要求 | 说明 |
+|------|------|
+| **Git** | 支持 `--recurse-submodules` |
+| **Python 3.11+** | uv 会在缺少时自动安装 |
+| **uv** | 高性能 Python 包管理器（[安装方式](https://docs.astral.sh/uv/)） |
+| **Node.js 18+** | 可选 —— 仅在使用浏览器工具或 WhatsApp bridge 时需要 |
 
-### Clone and install
+### 完整安装步骤
+
+#### 1. 克隆代码库
 
 ```bash
 git clone --recurse-submodules https://github.com/NousResearch/hermes-agent.git
 cd hermes-agent
+```
 
-# Create venv with Python 3.11
+> 注意：已有代码库但未初始化子模块，可执行：
+> ```bash
+> git submodule update --init --recursive
+> ```
+
+#### 2. 创建虚拟环境并安装
+
+```bash
+# 创建 Python 3.11 虚拟环境
 uv venv venv --python 3.11
-export VIRTUAL_ENV="$(pwd)/venv"
 
-# Install with all extras (messaging, cron, CLI menus, dev tools)
+# 激活虚拟环境
+source venv/bin/activate
+
+# 安装项目及所有可选依赖（消息平台、cron、CLI 菜单、开发工具等）
 uv pip install -e ".[all,dev]"
 
-# Optional: RL training submodule
+# 可选：RL 训练子模块
 # git submodule update --init tinker-atropos && uv pip install -e "./tinker-atropos"
 
-# Optional: browser tools
+# 可选：浏览器工具（需 Node.js）
 npm install
 ```
 
-### Configure for development
+#### 3. 配置运行环境
 
 ```bash
+# 创建必要目录
 mkdir -p ~/.hermes/{cron,sessions,logs,memories,skills}
+
+# 复制配置文件
 cp cli-config.yaml.example ~/.hermes/config.yaml
 touch ~/.hermes/.env
 
-# Add at minimum an LLM provider key:
+# 填入至少一个 LLM provider 的 API key（按需替换）
 echo 'OPENROUTER_API_KEY=sk-or-v1-your-key' >> ~/.hermes/.env
+
+# 其他可选 provider key
+echo 'ANTHROPIC_API_KEY=sk-ant-your-key' >> ~/.hermes/.env
+echo 'OPENAI_API_KEY=sk-your-key' >> ~/.hermes/.env
 ```
 
-### Run
+#### 4. 软链到全局路径（可选）
 
 ```bash
-# Symlink for global access
 mkdir -p ~/.local/bin
 ln -sf "$(pwd)/venv/bin/hermes" ~/.local/bin/hermes
 
-# Verify
+# 确认 hermes 可全局调用（需将 ~/.local/bin 加入 PATH）
 hermes doctor
-hermes chat -q "Hello"
 ```
 
-### Run tests
+#### 5. 验证安装
 
 ```bash
+hermes doctor          # 完整诊断
+hermes model           # 选择 LLM 模型
+hermes chat -q "Hello" # 快速对话测试
+```
+
+#### 6. 运行测试
+
+```bash
+# 激活虚拟环境后执行
+source venv/bin/activate
 pytest tests/ -v
 ```
+
+### 安装方式对比
+
+| 方式 | 命令 | 说明 |
+|------|------|------|
+| **源码开发安装（推荐）** | `uv pip install -e ".[all,dev]"` | 可编辑源码，实时生效，包含全部可选功能 |
+| **仅核心功能** | `uv pip install -e "."` | 只装核心依赖，CLI 和基础 Agent |
+| **指定可选功能** | `uv pip install -e ".[messaging,cron,cli]"` | 按需安装，避免不必要的依赖 |
+| **打包发布构建** | `python -m build` | 从源码构建 wheel/sdist 分发包 |
+| **内网源码安装（Linux/macOS）** | `./scripts/install-from-source.sh --source-dir /path/to/hermes-agent` | 适合已拿到源码、不能 clone 仓库、但仍可联网拉依赖的环境 |
+| **内网源码安装（Windows）** | `powershell -ExecutionPolicy Bypass -File .\scripts\install-from-source.ps1 -SourceDir C:\path\to\hermes-agent` | Windows 下从本地源码安装 |
+
+### 内网源码安装说明
+
+适用于以下场景：
+- 已获取 Hermes 源码目录或源码包
+- 不能从 GitHub clone 仓库
+- 仍然可以联网安装 Python / npm 依赖
+
+脚本行为：
+- **会自动安装/准备**：`uv`、Python 3.11、Git、可选系统依赖（`ripgrep`、`ffmpeg`）
+- **只检查，不自动安装**：`pip`、`npm`
+- 如果 `pip` 或 `npm` 缺失，脚本会直接退出，并提示用户手动安装后重试
+
+Linux / macOS：
+
+```bash
+chmod +x ./scripts/install-from-source.sh
+./scripts/install-from-source.sh --source-dir /path/to/hermes-agent --skip-setup
+```
+
+Windows PowerShell：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-from-source.ps1 -SourceDir C:\path\to\hermes-agent -SkipSetup
+```
+
+验证命令：
+
+```bash
+hermes --version
+hermes doctor
+```
+
+### 常见问题
+
+| 问题 | 解决方案 |
+|------|----------|
+| `matrix` extra 安装失败 | macOS Clang 21+ 与 `libolm` 不兼容，Matrix 需手动单独安装 |
+| Termux 环境下安装 | 使用 `.[termux]` 而非 `.[all]`，避免 `faster-whisper` 不兼容问题 |
+| 浏览器工具不可用 | 确保 Node.js 18+ 已安装，并执行了 `npm install` |
+| ripgrep 缺失 | `brew install ripgrep`，文件搜索会降级为 grep |
 
 ---
 
