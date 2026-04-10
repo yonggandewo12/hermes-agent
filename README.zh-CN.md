@@ -7,6 +7,11 @@
   <a href="./README.zh-CN.md"><img src="https://img.shields.io/badge/简体中文-当前-2ea44f?style=for-the-badge" alt="简体中文"></a>
 </p>
 
+<p align="center">
+  <a href="./CONTRIBUTING.md">Contributing Guide (English)</a> ·
+  <a href="./CONTRIBUTING.zh-CN.md">贡献指南（中文）</a>
+</p>
+
 # Hermes Agent ☤
 
 **[Nous Research](https://nousresearch.com) 打造的自我进化 AI Agent。** 它内置完整的学习闭环：能从经验中创建技能、在使用过程中持续改进技能、主动推动知识持久化、搜索自己的历史对话，并在跨会话中逐步形成更深入的用户模型。你既可以把它跑在一台 5 美元的 VPS 上，也可以运行在 GPU 集群或几乎闲置零成本的无服务器基础设施上。它不依赖你的笔记本电脑——甚至可以在云端 VM 上工作时，通过 Telegram 和它对话。

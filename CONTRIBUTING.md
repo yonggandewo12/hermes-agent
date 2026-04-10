@@ -51,143 +51,207 @@ If your skill is specialized, community-contributed, or niche, it's better suite
 
 ## Development Setup
 
-### 前置要求
+### Prerequisites
 
-| 要求 | 说明 |
+| Requirement | Notes |
 |------|------|
-| **Git** | 支持 `--recurse-submodules` |
-| **Python 3.11+** | uv 会在缺少时自动安装 |
-| **uv** | 高性能 Python 包管理器（[安装方式](https://docs.astral.sh/uv/)） |
-| **Node.js 18+** | 可选 —— 仅在使用浏览器工具或 WhatsApp bridge 时需要 |
+| **Git** | Should support `--recurse-submodules` |
+| **Python 3.11+** | `uv` installs it automatically if missing |
+| **uv** | High-performance Python package manager ([installation guide](https://docs.astral.sh/uv/)) |
+| **Node.js 18+** | Optional — only needed for browser tools or the WhatsApp bridge |
 
-### 完整安装步骤
+### Full Installation Steps
 
-#### 1. 克隆代码库
+#### 1. Clone the repository
 
 ```bash
 git clone --recurse-submodules https://github.com/NousResearch/hermes-agent.git
 cd hermes-agent
 ```
 
-> 注意：已有代码库但未初始化子模块，可执行：
+> Note: if you already have the repository but submodules are not initialized, run:
 > ```bash
 > git submodule update --init --recursive
 > ```
 
-#### 2. 创建虚拟环境并安装
+#### 2. Create a virtual environment and install
 
 ```bash
-# 创建 Python 3.11 虚拟环境
+# Create a Python 3.11 virtual environment
 uv venv venv --python 3.11
 
-# 激活虚拟环境
+# Activate it
 source venv/bin/activate
 
-# 安装项目及所有可选依赖（消息平台、cron、CLI 菜单、开发工具等）
+# Install the project plus all optional dependencies
 uv pip install -e ".[all,dev]"
 
-# 可选：RL 训练子模块
+# Optional: RL training submodule
 # git submodule update --init tinker-atropos && uv pip install -e "./tinker-atropos"
 
-# 可选：浏览器工具（需 Node.js）
+# Optional: browser tooling (requires Node.js)
 npm install
 ```
 
-#### 3. 配置运行环境
+#### 3. Configure the runtime environment
 
 ```bash
-# 创建必要目录
+# Create required directories
 mkdir -p ~/.hermes/{cron,sessions,logs,memories,skills}
 
-# 复制配置文件
+# Copy config files
 cp cli-config.yaml.example ~/.hermes/config.yaml
 touch ~/.hermes/.env
 
-# 填入至少一个 LLM provider 的 API key（按需替换）
+# Add at least one LLM provider API key
+# Replace with the provider you actually plan to use
 echo 'OPENROUTER_API_KEY=sk-or-v1-your-key' >> ~/.hermes/.env
 
-# 其他可选 provider key
+# Other optional provider keys
 echo 'ANTHROPIC_API_KEY=sk-ant-your-key' >> ~/.hermes/.env
 echo 'OPENAI_API_KEY=sk-your-key' >> ~/.hermes/.env
 ```
 
-#### 4. 软链到全局路径（可选）
+#### 4. Link Hermes into your PATH (optional)
 
 ```bash
 mkdir -p ~/.local/bin
 ln -sf "$(pwd)/venv/bin/hermes" ~/.local/bin/hermes
 
-# 确认 hermes 可全局调用（需将 ~/.local/bin 加入 PATH）
+# Confirm hermes is available globally
+# (requires ~/.local/bin to be on PATH)
 hermes doctor
 ```
 
-#### 5. 验证安装
+#### 5. Verify the installation
 
 ```bash
-hermes doctor          # 完整诊断
-hermes model           # 选择 LLM 模型
-hermes chat -q "Hello" # 快速对话测试
+hermes doctor          # Full diagnostics
+hermes model           # Choose an LLM model
+hermes chat -q "Hello" # Quick chat smoke test
 ```
 
-#### 6. 运行测试
+#### 6. Run tests
 
 ```bash
-# 激活虚拟环境后执行
+# After activating the virtual environment
 source venv/bin/activate
 pytest tests/ -v
 ```
 
-### 安装方式对比
+### Installation Methods
 
-| 方式 | 命令 | 说明 |
+| Method | Command | Notes |
 |------|------|------|
-| **源码开发安装（推荐）** | `uv pip install -e ".[all,dev]"` | 可编辑源码，实时生效，包含全部可选功能 |
-| **仅核心功能** | `uv pip install -e "."` | 只装核心依赖，CLI 和基础 Agent |
-| **指定可选功能** | `uv pip install -e ".[messaging,cron,cli]"` | 按需安装，避免不必要的依赖 |
-| **打包发布构建** | `python -m build` | 从源码构建 wheel/sdist 分发包 |
-| **内网源码安装（Linux/macOS）** | `./scripts/install-from-source.sh --source-dir /path/to/hermes-agent` | 适合已拿到源码、不能 clone 仓库、但仍可联网拉依赖的环境 |
-| **内网源码安装（Windows）** | `powershell -ExecutionPolicy Bypass -File .\scripts\install-from-source.ps1 -SourceDir C:\path\to\hermes-agent` | Windows 下从本地源码安装 |
+| **Source development install (recommended)** | `uv pip install -e ".[all,dev]"` | Editable install with all optional features |
+| **Core only** | `uv pip install -e "."` | Installs only core dependencies, CLI, and base agent features |
+| **Selected extras** | `uv pip install -e ".[messaging,cron,cli]"` | Install only the optional feature groups you need |
+| **Build for distribution** | `python -m build` | Build wheel and sdist packages from source |
+| **Internal source install (Linux/macOS)** | `./scripts/install-from-source.sh --source-dir /path/to/hermes-agent` | For environments where source is already available locally and GitHub clone is not allowed |
+| **Internal source install (Windows)** | `powershell -ExecutionPolicy Bypass -File .\scripts\install-from-source.ps1 -SourceDir C:\path\to\hermes-agent` | Install from a local source tree on Windows |
 
-### 内网源码安装说明
+### Internal Source Installation
 
-适用于以下场景：
-- 已获取 Hermes 源码目录或源码包
-- 不能从 GitHub clone 仓库
-- 仍然可以联网安装 Python / npm 依赖
+Use this path when:
+- you already have a Hermes source tree or source archive
+- you cannot clone from GitHub directly
+- you need to deploy inside an internal network, restricted network, or private package mirror environment
+- you can still reach Python and npm package sources, or you already prepared internal mirrors
 
-脚本行为：
-- **会自动安装/准备**：`uv`、Python 3.11、Git、可选系统依赖（`ripgrep`、`ffmpeg`）
-- **只检查，不自动安装**：`pip`、`npm`
-- 如果 `pip` 或 `npm` 缺失，脚本会直接退出，并提示用户手动安装后重试
+#### Prerequisites
 
-Linux / macOS：
+| Dependency | Required | Notes |
+|------|----------|------|
+| **Git** | Required | The installer checks that Git is available |
+| **Python 3.11+** | Required | The installer prefers to provision Python 3.11 via `uv` |
+| **pip** | Required | Checked only, not auto-installed; the installer exits if missing |
+| **npm** | Required | Checked only, not auto-installed; the installer exits if missing |
+| **uv** | Recommended | Auto-installed if missing |
+| **Node.js** | Optional | Not required for the core install, but some browser-related features and bridge dependencies will be skipped without it |
+| **ripgrep / ffmpeg** | Optional | The installer may try to install them for search and audio/video-related features |
+
+#### Network Requirements
+
+The internal source installer **does not clone from GitHub**, but it still installs Python and npm dependencies by default. You should satisfy at least one of the following:
+
+- the machine can access public PyPI and npm registries
+- the machine is configured to use internal PyPI and npm mirrors
+- you already prepared dependency caches or mirrored packages before installation
+
+#### Installation Steps
+
+Linux / macOS:
 
 ```bash
 chmod +x ./scripts/install-from-source.sh
 ./scripts/install-from-source.sh --source-dir /path/to/hermes-agent --skip-setup
 ```
 
-Windows PowerShell：
+Windows PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\install-from-source.ps1 -SourceDir C:\path\to\hermes-agent -SkipSetup
 ```
 
-验证命令：
+If you want the installer to create the virtual environment and initialize files such as `~/.hermes/config.yaml` and `~/.hermes/.env`, keep the default behavior. `--skip-setup` only skips the interactive setup wizard.
+
+#### Local LLM Configuration
+
+Internal deployments often use a local or self-hosted inference service. Hermes supports any OpenAI-compatible endpoint. You can configure it through `hermes model` or by editing `~/.hermes/config.yaml` directly.
+
+**Scenario 1: local or internal LLM with an API key**
+
+Use this for authenticated internal gateways, proxy services, or private inference endpoints that require a token:
+
+```yaml
+model:
+  provider: custom
+  default: your-model-name
+  base_url: http://your-internal-llm.example.com/v1
+  api_key: your-api-key
+```
+
+**Scenario 2: local LLM without an API key**
+
+Use this for Ollama, LM Studio, vLLM, llama.cpp, or similar local services. `api_key` can be omitted or left empty:
+
+```yaml
+model:
+  provider: custom
+  default: your-model-name
+  base_url: http://localhost:11434/v1
+```
+
+Common local service examples:
+- **Ollama**: `http://localhost:11434/v1`
+- **LM Studio**: `http://localhost:1234/v1`
+- **vLLM**: `http://localhost:8000/v1`
+- **llama.cpp**: `http://localhost:8080/v1`
+
+You can also run:
+
+```bash
+hermes model
+```
+
+Then choose **Custom endpoint (self-hosted / VLLM / etc.)** for interactive setup.
+
+#### Verification Commands
 
 ```bash
 hermes --version
 hermes doctor
+hermes model
 ```
 
-### 常见问题
+### Common Issues
 
-| 问题 | 解决方案 |
+| Issue | Resolution |
 |------|----------|
-| `matrix` extra 安装失败 | macOS Clang 21+ 与 `libolm` 不兼容，Matrix 需手动单独安装 |
-| Termux 环境下安装 | 使用 `.[termux]` 而非 `.[all]`，避免 `faster-whisper` 不兼容问题 |
-| 浏览器工具不可用 | 确保 Node.js 18+ 已安装，并执行了 `npm install` |
-| ripgrep 缺失 | `brew install ripgrep`，文件搜索会降级为 grep |
+| `matrix` extra installation fails | `libolm` is incompatible with macOS Clang 21+; install Matrix support separately if needed |
+| Installing in Termux | Use `.[termux]` instead of `.[all]` to avoid incompatible `faster-whisper` dependencies |
+| Browser tools are unavailable | Make sure Node.js 18+ is installed and run `npm install` |
+| `ripgrep` is missing | Install it manually, e.g. `brew install ripgrep`; file search will otherwise fall back to grep |
 
 ---
 

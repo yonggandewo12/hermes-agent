@@ -7,6 +7,11 @@
   <a href="./README.zh-CN.md"><img src="https://img.shields.io/badge/简体中文-View-0A66C2?style=for-the-badge" alt="简体中文"></a>
 </p>
 
+<p align="center">
+  <a href="./CONTRIBUTING.md">Contributing Guide</a> ·
+  <a href="./CONTRIBUTING.zh-CN.md">中文贡献指南</a>
+</p>
+
 # Hermes Agent ☤
 
 <p align="center">
