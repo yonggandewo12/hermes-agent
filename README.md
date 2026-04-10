@@ -2,6 +2,11 @@
   <img src="assets/banner.png" alt="Hermes Agent" width="100%">
 </p>
 
+<p align="center">
+  <a href="./README.md"><img src="https://img.shields.io/badge/English-Current-2ea44f?style=for-the-badge" alt="English"></a>
+  <a href="./README.zh-CN.md"><img src="https://img.shields.io/badge/简体中文-View-0A66C2?style=for-the-badge" alt="简体中文"></a>
+</p>
+
 # Hermes Agent ☤
 
 <p align="center">
