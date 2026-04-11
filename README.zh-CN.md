@@ -136,8 +136,14 @@ Hermes 有两个主要入口：一是直接运行 `hermes` 打开终端 UI；二
 手动运行示例：
 
 ```bash
-hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc config=/abs/path/page-capture.yaml"
+# 默认使用 ~/.hermes/playwright-page-capture.yaml
+hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc"
+
+# 指定自定义配置文件
+hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc config=/path/to/my-config.yaml"
 ```
+
+> 默认配置文件路径：`~/.hermes/playwright-page-capture.yaml`
 
 ---
 

@@ -1,3 +1,8 @@
+# Feishu credentials (optional — also supported via hermes config or env vars)
+# feishu:
+#   app_id: cli_xxx
+#   app_secret: secret_xxx
+
 pages:
   - page_id: baidu_poc
     name: Baidu PoC

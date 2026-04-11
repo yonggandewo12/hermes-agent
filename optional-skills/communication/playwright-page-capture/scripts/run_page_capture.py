@@ -94,15 +94,27 @@ def build_feishu_client(config_path: str):
             f"add feishu config to the page-capture YAML, or run `hermes tools --first-install`."
         ) from exc
 
+def _default_config_path() -> Path:
+    return Path.home() / ".hermes" / "playwright-page-capture.yaml"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", required=True)
+    parser.add_argument("--config", default=None)
     parser.add_argument("--page-id", required=True)
     args = parser.parse_args()
-    client = build_feishu_client(args.config)
+
+    config_path = args.config or str(_default_config_path())
+    if not Path(config_path).exists():
+        raise FileNotFoundError(
+            f"Config file not found: {config_path}\n"
+            f"Create it at that path, or pass --config /path/to/page-capture.yaml"
+        )
+
+    client = build_feishu_client(config_path)
     from page_capture_browser import run_browser_capture
     result = run_capture_pipeline(
-        config_path=args.config,
+        config_path=config_path,
         page_id=args.page_id,
         feishu_client=client,
         browser_runner=run_browser_capture,
