@@ -42,3 +42,9 @@ class PageCaptureDefinition:
 @dataclass
 class PageCaptureConfig:
     pages: list[PageCaptureDefinition]
+
+
+@dataclass
+class BrowserLaunchOptions:
+    headless: bool
+    storage_state: str | None = None
