@@ -1,0 +1,18 @@
+pages:
+  - page_id: baidu_poc
+    name: Baidu PoC
+    url: https://www.baidu.com
+    wait_for:
+      load_state: networkidle
+      selector: "input[name='wd']"
+    network_probe:
+      url_keywords: ["baidu.com"]
+    dom_fields:
+      - field: page_title
+        kind: title
+      - field: search_input_name
+        selector: "input[name='wd']"
+        attribute: name
+        required: true
+    feishu_target:
+      chat_id: oc_example_chat
