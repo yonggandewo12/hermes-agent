@@ -61,3 +61,6 @@ class NetworkProbeResult:
 class DomExtractionResult:
     fields: dict[str, str]
     missing_fields: list[str]
+
+
+CaptureState = str
