@@ -39,7 +39,14 @@ def run_browser_capture(page_def):
             page.goto(page_def.url, wait_until=page_def.wait_for.load_state)
             if page_def.wait_for.selector:
                 page.wait_for_selector(page_def.wait_for.selector)
-            return normalize_runtime_result(page=page, events=events, fetch_error=None, login_required=False)
+            dom_result = extract_dom_fields(page, page_def.dom_fields)
+            return normalize_runtime_result(
+                page=None,
+                events=events,
+                fetch_error=None,
+                login_required=False,
+                dom_result=dom_result,
+            )
         except Exception as exc:
             return normalize_runtime_result(page=None, events=events, fetch_error=str(exc), login_required=False)
         finally:
