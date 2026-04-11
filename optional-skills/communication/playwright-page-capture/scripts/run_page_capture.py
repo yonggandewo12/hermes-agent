@@ -51,7 +51,15 @@ def main() -> int:
         app_id=os.environ["FEISHU_APP_ID"],
         app_secret=os.environ["FEISHU_APP_SECRET"],
     )
-    raise NotImplementedError("Wire browser runner in implementation task")
+    from .page_capture_browser import run_browser_capture
+    result = run_capture_pipeline(
+        config_path=args.config,
+        page_id=args.page_id,
+        feishu_client=client,
+        browser_runner=run_browser_capture,
+    )
+    print(json.dumps(result, ensure_ascii=False))
+    return 0
 
 
 if __name__ == "__main__":

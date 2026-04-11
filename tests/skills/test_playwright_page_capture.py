@@ -13,13 +13,13 @@ SCRIPTS_DIR = (
 sys.path.insert(0, SCRIPTS_DIR)
 
 
-def test_playwright_page_capture_skill_scaffold_exists():
+def test_playwright_page_capture_skill_scaffold_exists() -> None:
     root = Path("optional-skills/communication/playwright-page-capture")
     assert (root / "SKILL.md").exists()
     assert (root / "scripts" / "run_page_capture.py").exists()
 
 
-def test_build_browser_launch_options_includes_storage_state_when_present():
+def test_build_browser_launch_options_includes_storage_state_when_present() -> None:
     """When storage_state_path is provided, it appears in launch options."""
     # Load page_capture_models first (dependency)
     models_spec = importlib.util.spec_from_file_location(
@@ -42,7 +42,7 @@ def test_build_browser_launch_options_includes_storage_state_when_present():
     assert result["storage_state"] == "/tmp/state.json"
 
 
-def test_run_capture_pipeline_returns_ok_for_baidu_poc(monkeypatch, tmp_path: Path):
+def test_run_capture_pipeline_returns_ok_for_baidu_poc(monkeypatch, tmp_path: Path) -> None:
     config_path = tmp_path / "page-capture.yaml"
     config_path.write_text(
         """
@@ -116,3 +116,18 @@ def test_run_capture_pipeline_returns_ok_for_baidu_poc(monkeypatch, tmp_path: Pa
     assert result["message_id"] == "om_test"
     assert sent["chat_id"] == "oc_test_chat"
     assert "页面巡检结果" in sent["text"]
+
+
+def test_normalize_runtime_result_returns_fetch_failed_on_navigation_error() -> None:
+    # Load page_capture_browser module
+    browser_spec = importlib.util.spec_from_file_location(
+        "page_capture_browser", SCRIPTS_DIR / "page_capture_browser.py"
+    )
+    browser_module = importlib.util.module_from_spec(browser_spec)
+    sys.modules["page_capture_browser"] = browser_module
+    browser_spec.loader.exec_module(browser_module)
+
+    result = browser_module.normalize_runtime_result(page=None, events=[], fetch_error="timeout", login_required=False)
+    assert result["fetch_error"] == "timeout"
+    assert result["login_required"] is False
+    assert result["events"] == []
