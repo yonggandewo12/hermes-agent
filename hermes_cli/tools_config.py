@@ -1494,6 +1494,7 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
     if len(platform_keys) > 1:
         platform_choices.append("Configure all platforms (global)")
     platform_choices.append("Reconfigure an existing tool's provider or API key")
+    platform_choices.append("Configure Playwright Page Capture")
 
     # Show MCP option if any MCP servers are configured
     _has_mcp = bool(config.get("mcp_servers"))
@@ -1505,8 +1506,9 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
     # Index offsets for the extra options after per-platform entries
     _global_idx = len(platform_keys) if len(platform_keys) > 1 else -1
     _reconfig_idx = len(platform_keys) + (1 if len(platform_keys) > 1 else 0)
-    _mcp_idx = (_reconfig_idx + 1) if _has_mcp else -1
-    _done_idx = _reconfig_idx + (2 if _has_mcp else 1)
+    _playwright_idx = _reconfig_idx + 1
+    _mcp_idx = (_playwright_idx + 1) if _has_mcp else -1
+    _done_idx = _playwright_idx + (2 if _has_mcp else 1)
 
     while True:
         idx = _prompt_choice("Select an option:", platform_choices, default=0)
@@ -1524,6 +1526,12 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
         # "Configure MCP tools" selected
         if idx == _mcp_idx:
             _configure_mcp_tools_interactive(config)
+            print()
+            continue
+
+        # "Configure Playwright Page Capture" selected
+        if idx == _playwright_idx:
+            _setup_playwright_page_capture()
             print()
             continue
 
