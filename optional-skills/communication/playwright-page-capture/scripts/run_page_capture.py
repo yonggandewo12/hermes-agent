@@ -2,11 +2,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from .page_capture_classify import classify_capture_result
-from .page_capture_config import load_page_capture_config
-from .page_capture_dom import extract_dom_fields
-from .page_capture_feishu import FeishuAppClient
-from .page_capture_probe import probe_network_events
+import sys
+from pathlib import Path
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, SCRIPTS_DIR)
+
+from page_capture_classify import classify_capture_result
+from page_capture_config import load_page_capture_config
+from page_capture_dom import extract_dom_fields
+from page_capture_feishu import FeishuAppClient
+from page_capture_probe import probe_network_events
 
 def _build_message(page_name: str, state: str, fields: dict[str, str], probe) -> str:
     if state == "ok":
@@ -51,7 +57,7 @@ def main() -> int:
         app_id=os.environ["FEISHU_APP_ID"],
         app_secret=os.environ["FEISHU_APP_SECRET"],
     )
-    from .page_capture_browser import run_browser_capture
+    from page_capture_browser import run_browser_capture
     result = run_capture_pipeline(
         config_path=args.config,
         page_id=args.page_id,

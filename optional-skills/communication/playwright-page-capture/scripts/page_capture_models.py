@@ -45,12 +45,6 @@ class PageCaptureConfig:
 
 
 @dataclass
-class BrowserLaunchOptions:
-    headless: bool
-    storage_state: str | None = None
-
-
-@dataclass
 class NetworkProbeResult:
     hit: bool
     url: str | None
