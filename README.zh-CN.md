@@ -136,14 +136,18 @@ Hermes 有两个主要入口：一是直接运行 `hermes` 打开终端 UI；二
 手动运行示例：
 
 ```bash
-# 默认使用 ~/.hermes/playwright-page-capture.yaml
+# YAML 模式：使用默认配置路径 ~/.hermes/playwright-page-capture.yaml
 hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc"
 
-# 指定自定义配置文件
+# YAML 模式：指定自定义配置文件
 hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc config=/path/to/my-config.yaml"
+
+# URL 模式：直连任意 URL，无需配置文件
+hermes -q "使用 playwright-page-capture 处理 page_id=https://www.baidu.com feishu_chat_id=oc_xxxx"
 ```
 
 > 默认配置文件路径：`~/.hermes/playwright-page-capture.yaml`
+> YAML 模式和 URL 模式都支持 `--feishu-chat-id` 参数覆盖配置文件中的 chat_id
 
 ---
 

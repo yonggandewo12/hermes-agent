@@ -1,23 +1,148 @@
-# Feishu credentials (optional — also supported via hermes config or env vars)
+# ============================================================
+# Playwright Page Capture — 配置文件示例
+# 配置文件路径：~/.hermes/playwright-page-capture.yaml
+# ============================================================
+#
+# Feishu 凭证（可选 — 也支持 hermes 全局配置或环境变量）
 # feishu:
-#   app_id: cli_xxx
-#   app_secret: secret_xxx
+#   app_id: cli_xxxxxxxxxxxxx
+#   app_secret: xxxxxxxxxxxxxxxxxxxxxxxx
+
+# ============================================================
+# feishu_target.chat_id 来源说明：
+#   每个页面可以独立指定 chat_id
+#   也可通过 --feishu-chat-id 参数覆盖所有页面的 chat_id
+# ============================================================
 
 pages:
+  # ── 示例 1: 百度搜索 — 基础抓取 + 字段提取 ──────────────────
   - page_id: baidu_poc
-    name: Baidu PoC
+    name: 百度搜索 PoC
     url: https://www.baidu.com
     wait_for:
       load_state: networkidle
       selector: "input[name='wd']"
     network_probe:
-      url_keywords: ["baidu.com"]
+      url_keywords:
+        - "baidu.com"
+        - "bdimg.com"
     dom_fields:
+      # 页面标题
       - field: page_title
         kind: title
+      # 搜索框属性
       - field: search_input_name
         selector: "input[name='wd']"
         attribute: name
         required: true
+      # Logo alt 文本
+      - field: logo_alt
+        selector: "#lg > img"
+        attribute: alt
+        required: false
     feishu_target:
-      chat_id: oc_example_chat
+      chat_id: oc_xxxxxxxxxx
+
+  # ── 示例 2: 检查多个 API 端点是否正常 ──────────────────────
+  - page_id: internal_api_health
+    name: 内部 API 健康检查
+    url: https://httpbin.org/get
+    wait_for:
+      load_state: load
+    # 探测特定域名是否有请求发出（验证 CDN/后端连通性）
+    network_probe:
+      url_keywords:
+        - "httpbin.org"
+    dom_fields:
+      # 提取 JSON body 中的 origin 字段（发起请求的 IP）
+      - field: request_origin
+        selector: "pre"
+        attribute: textContent
+        required: false
+      # 检查页面状态码（通过 Playwright response 事件，network_probe 返回）
+      - field: response_status
+        kind: text
+        selector: "body"
+        required: false
+    feishu_target:
+      chat_id: oc_xxxxxxxxxx
+
+  # ── 示例 3: 单页应用（SPA），等待特定元素出现 ───────────────
+  - page_id: spa_dashboard
+    name: SPA Dashboard
+    url: https://example.com/dashboard
+    wait_for:
+      # 不等网络空闲（SPA 持续有 XHR），只等关键元素出现
+      load_state: domcontentloaded
+      selector: "[data-testid='dashboard-content']"
+    network_probe:
+      url_keywords:
+        - "api.example.com"
+        - "cdn.example.com"
+    dom_fields:
+      # 提取关键指标卡片数值
+      - field: total_users
+        selector: "[data-testid='metric-users']"
+        kind: text
+        required: true
+      - field: active_sessions
+        selector: "[data-testid='metric-sessions']"
+        kind: text
+        required: true
+      # 提取导航菜单第一项文本
+      - field: nav_first_item
+        selector: "nav > ul > li:first-child"
+        kind: text
+        required: false
+    feishu_target:
+      chat_id: oc_xxxxxxxxxx
+
+  # ── 示例 4: 登录页检查（通过 selector 验证页面完整性）──────
+  - page_id: login_page_integrity
+    name: 登录页完整性
+    url: https://example.com/login
+    wait_for:
+      load_state: networkidle
+      selector: "form.login-form"
+    dom_fields:
+      # 验证用户名输入框存在
+      - field: username_input_type
+        selector: "input[type='text'][name='username']"
+        attribute: type
+        required: true
+      # 验证密码输入框存在
+      - field: password_input_type
+        selector: "input[type='password'][name='password']"
+        attribute: type
+        required: true
+      # 验证提交按钮存在
+      - field: submit_button_text
+        selector: "button[type='submit']"
+        kind: text
+        required: true
+    feishu_target:
+      chat_id: oc_xxxxxxxxxx
+
+  # ── 示例 5: 带登录态的抓取（storage_state）────────────────
+  # 使用预先登录导出的 storage_state 文件
+  - page_id: logged_in_page
+    name: 已登录页面内容
+    url: https://example.com/private/dashboard
+    storage_state_path: /path/to/login-state.json
+    wait_for:
+      load_state: networkidle
+      selector: ".user-info"
+    network_probe:
+      url_keywords:
+        - "api.example.com"
+    dom_fields:
+      - field: user_display_name
+        selector: ".user-info .display-name"
+        kind: text
+        required: true
+      - field: user_email
+        selector: ".user-info .email"
+        kind: text
+        required: false
+    feishu_target:
+      chat_id: oc_xxxxxxxxxx

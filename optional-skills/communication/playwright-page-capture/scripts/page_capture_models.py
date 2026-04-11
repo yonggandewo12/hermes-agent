@@ -65,3 +65,22 @@ class DomExtractionResult:
 
 
 CaptureState = str
+
+
+def page_definition_from_url(url: str, *, feishu_chat_id: str) -> PageCaptureDefinition:
+    """Build a minimal PageCaptureDefinition for a raw URL (URL mode)."""
+    # Extract name from URL host
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    name = parsed.netloc or url
+
+    return PageCaptureDefinition(
+        page_id=url,
+        name=name,
+        url=url,
+        wait_for=WaitForConfig(load_state="networkidle"),
+        network_probe=NetworkProbeConfig(url_keywords=[]),
+        dom_fields=[],
+        feishu_target=FeishuTarget(chat_id=feishu_chat_id),
+        storage_state_path=None,
+    )

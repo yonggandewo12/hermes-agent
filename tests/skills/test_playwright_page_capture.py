@@ -1,6 +1,9 @@
 from pathlib import Path
 import sys
 import importlib.util
+import types
+
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -484,3 +487,136 @@ def test_main_uses_default_config_path(monkeypatch, tmp_path: Path) -> None:
     run_page_capture_module.main()
 
     assert captured == {"app_id": "default_app_id", "app_secret": "default_app_secret"}
+
+
+def test_run_capture_pipeline_url_mode_returns_ok(monkeypatch, tmp_path: Path) -> None:
+    """URL mode: page_id is a raw URL, builds minimal definition, returns ok."""
+    config_path = tmp_path / "page-capture.yaml"
+    config_path.write_text(
+        """
+        feishu:
+          app_id: test_app
+          app_secret: test_secret
+        pages: []
+        """,
+        encoding="utf-8",
+    )
+
+    sent = {}
+
+    class DummyFeishuClient:
+        def __init__(self, *, app_id: str, app_secret: str):
+            pass
+
+        def send_text(self, *, chat_id: str, text: str) -> str:
+            sent["chat_id"] = chat_id
+            sent["text"] = text
+            return "om_url_test"
+
+    class DummyBrowserResult(dict):
+        pass
+
+    for mod_name, mod_path in [
+        ("page_capture_models", SCRIPTS_DIR / "page_capture_models.py"),
+        ("page_capture_classify", SCRIPTS_DIR / "page_capture_classify.py"),
+        ("page_capture_config", SCRIPTS_DIR / "page_capture_config.py"),
+        ("page_capture_dom", SCRIPTS_DIR / "page_capture_dom.py"),
+        ("page_capture_feishu", SCRIPTS_DIR / "page_capture_feishu.py"),
+        ("page_capture_probe", SCRIPTS_DIR / "page_capture_probe.py"),
+    ]:
+        spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = module
+        sys.modules[f"scripts.{mod_name}"] = module
+        spec.loader.exec_module(module)
+
+    run_page_capture_spec = importlib.util.spec_from_file_location(
+        "run_page_capture", SCRIPTS_DIR / "run_page_capture.py"
+    )
+    run_page_capture_module = importlib.util.module_from_spec(run_page_capture_spec)
+    run_page_capture_module.__package__ = "scripts"
+    sys.modules["run_page_capture"] = run_page_capture_module
+    run_page_capture_spec.loader.exec_module(run_page_capture_module)
+
+    mock_browser_module = types.ModuleType("page_capture_browser")
+    mock_browser_module.run_browser_capture = lambda page_def: DummyBrowserResult({
+        "page": None,
+        "events": [],
+        "fetch_error": None,
+        "login_required": False,
+        "dom_result": type("DomResult", (), {"fields": {}, "missing_fields": []})(),
+    })
+    sys.modules["page_capture_browser"] = mock_browser_module
+
+    result = run_page_capture_module.run_capture_pipeline(
+        config_path=str(config_path),
+        page_id="https://www.baidu.com",
+        feishu_client=DummyFeishuClient(app_id="x", app_secret="x"),
+        browser_runner=mock_browser_module.run_browser_capture,
+        feishu_chat_id="oc_url_chat",
+    )
+
+    assert result["state"] == "ok"
+    assert result["message_id"] == "om_url_test"
+    assert sent["chat_id"] == "oc_url_chat"
+    assert "https://www.baidu.com" in sent["text"]
+    assert "URL" in sent["text"]
+
+
+def test_run_capture_pipeline_url_mode_requires_chat_id(monkeypatch, tmp_path: Path) -> None:
+    """URL mode without feishu_chat_id raises ValueError."""
+    config_path = tmp_path / "page-capture.yaml"
+    config_path.write_text("pages: []", encoding="utf-8")
+
+    for mod_name, mod_path in [
+        ("page_capture_models", SCRIPTS_DIR / "page_capture_models.py"),
+        ("page_capture_classify", SCRIPTS_DIR / "page_capture_classify.py"),
+        ("page_capture_config", SCRIPTS_DIR / "page_capture_config.py"),
+        ("page_capture_dom", SCRIPTS_DIR / "page_capture_dom.py"),
+        ("page_capture_feishu", SCRIPTS_DIR / "page_capture_feishu.py"),
+        ("page_capture_probe", SCRIPTS_DIR / "page_capture_probe.py"),
+    ]:
+        spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = module
+        sys.modules[f"scripts.{mod_name}"] = module
+        spec.loader.exec_module(module)
+
+    run_page_capture_spec = importlib.util.spec_from_file_location(
+        "run_page_capture", SCRIPTS_DIR / "run_page_capture.py"
+    )
+    run_page_capture_module = importlib.util.module_from_spec(run_page_capture_spec)
+    run_page_capture_module.__package__ = "scripts"
+    sys.modules["run_page_capture"] = run_page_capture_module
+    run_page_capture_spec.loader.exec_module(run_page_capture_module)
+
+    with pytest.raises(ValueError, match="feishu_chat_id is required"):
+        run_page_capture_module.run_capture_pipeline(
+            config_path=str(config_path),
+            page_id="https://www.baidu.com",
+            feishu_client=type("Client", (), {"send_text": lambda self, **kw: "x"})(),
+            browser_runner=lambda x: {},
+            feishu_chat_id=None,
+        )
+
+
+def test_page_definition_from_url_extracts_name_from_host(tmp_path: Path) -> None:
+    """URL mode builds name from URL host."""
+    models_spec = importlib.util.spec_from_file_location(
+        "page_capture_models", SCRIPTS_DIR / "page_capture_models.py"
+    )
+    models_module = importlib.util.module_from_spec(models_spec)
+    sys.modules["page_capture_models"] = models_module
+    models_spec.loader.exec_module(models_module)
+
+    defs_module = models_module
+
+    page_def = defs_module.page_definition_from_url(
+        "https://httpbin.org/get", feishu_chat_id="oc_test"
+    )
+
+    assert page_def.name == "httpbin.org"
+    assert page_def.url == "https://httpbin.org/get"
+    assert page_def.wait_for.load_state == "networkidle"
+    assert page_def.dom_fields == []
+    assert page_def.feishu_target.chat_id == "oc_test"

@@ -25,13 +25,14 @@ except ImportError:
 
 def _build_message(page_name: str, state: str, fields: dict[str, str], probe) -> str:
     if state == "ok":
+        title = fields.get("page_title", "")
+        title_line = f"页面标题：{title}\n" if title else ""
         return (
             f"【页面巡检结果】\n页面：{page_name}\n状态：ok\n"
-            f"页面标题：{fields.get('page_title', '')}\n"
-            f"搜索框名称：{fields.get('search_input_name', '')}\n"
+            f"{title_line}"
             f"网络探测：{'命中' if probe.hit else '未命中'}\n"
             f"网络状态码：{probe.status if probe.status is not None else ''}\n"
-            "结论：公共抓取链路运行正常"
+            "结论：页面加载正常"
         )
     if state == "field_missing":
         return f"【页面字段缺失】\n页面：{page_name}\n状态：field_missing\n缺失字段：{','.join(sorted(set(fields.get('_missing_fields', []))))}"
@@ -39,7 +40,56 @@ def _build_message(page_name: str, state: str, fields: dict[str, str], probe) ->
         return f"【页面需要登录】\n页面：{page_name}\n状态：login_required\n动作：请手工登录后重试"
     return f"【页面抓取失败】\n页面：{page_name}\n状态：fetch_failed\n原因：页面加载失败、超时或提取流程异常"
 
-def run_capture_pipeline(*, config_path: str, page_id: str, feishu_client, browser_runner):
+
+def _build_message_for_url(url: str, state: str, fields: dict[str, str]) -> str:
+    """Simplified message for URL mode (no YAML config, no DOM fields)."""
+    if state == "ok":
+        title = fields.get("page_title", "")
+        title_line = f"页面标题：{title}\n" if title else ""
+        return (
+            f"【页面巡检结果】\nURL：{url}\n状态：ok\n"
+            f"{title_line}"
+            "结论：页面加载正常"
+        )
+    if state == "login_required":
+        return f"【页面需要登录】\nURL：{url}\n状态：login_required\n动作：请手工登录后重试"
+    return f"【页面抓取失败】\nURL：{url}\n状态：fetch_failed\n原因：页面加载失败、超时或提取流程异常"
+
+
+def _is_url(page_id: str) -> bool:
+    return page_id.startswith("http://") or page_id.startswith("https://")
+
+def run_capture_pipeline(*, config_path: str, page_id: str, feishu_client, browser_runner, feishu_chat_id: str | None = None):
+    # URL mode: page_id is a raw URL, bypass YAML config lookup
+    if _is_url(page_id):
+        from page_capture_models import page_definition_from_url
+        if not feishu_chat_id:
+            raise ValueError(
+                "feishu_chat_id is required when page_id is a URL. "
+                "Pass --feishu-chat-id <chat_id>"
+            )
+        page_def = page_definition_from_url(page_id, feishu_chat_id=feishu_chat_id)
+        runtime = browser_runner(page_def)
+        dom_result = runtime.get("dom_result")
+        if dom_result is None:
+            if runtime["fetch_error"] or runtime["page"] is None:
+                dom_result = type("DomResult", (), {"fields": {}, "missing_fields": []})()
+            else:
+                dom_result = extract_dom_fields(runtime["page"], page_def.dom_fields)
+        # In URL mode, dom_fields is always [] and network_probe is skipped,
+        # so pass probe_hit=True to avoid penalizing the classification.
+        state = classify_capture_result(
+            fetch_error=runtime["fetch_error"],
+            missing_fields=dom_result.missing_fields,
+            probe_hit=True,
+            login_required=runtime["login_required"],
+        )
+        fields = dict(dom_result.fields)
+        text = _build_message_for_url(page_id, state, fields)
+        message_id = feishu_client.send_text(chat_id=feishu_chat_id, text=text)
+        return {"state": state, "message_id": message_id}
+
+    # YAML config mode: look up page_id in config
     config = load_page_capture_config(config_path)
     page_def = next(page for page in config.pages if page.page_id == page_id)
     runtime = browser_runner(page_def)
@@ -102,6 +152,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=None)
     parser.add_argument("--page-id", required=True)
+    parser.add_argument("--feishu-chat-id", default=None,
+                        help="飞书群 chat_id，URL 模式（page_id 为 URL 时）必须指定；YAML 模式可覆盖配置文件中的 feishu_target.chat_id")
     args = parser.parse_args()
 
     config_path = args.config or str(_default_config_path())
@@ -118,6 +170,7 @@ def main() -> int:
         page_id=args.page_id,
         feishu_client=client,
         browser_runner=run_browser_capture,
+        feishu_chat_id=args.feishu_chat_id,
     )
     print(json.dumps(result, ensure_ascii=False))
     return 0

@@ -129,11 +129,14 @@ A page capture workflow can:
 Manual run example:
 
 ```bash
-# Uses default config: ~/.hermes/playwright-page-capture.yaml
+# YAML mode: uses default config ~/.hermes/playwright-page-capture.yaml
 hermes -q "Use playwright-page-capture for page_id=baidu_poc"
 
-# Specify custom config path
+# YAML mode: specify custom config
 hermes -q "Use playwright-page-capture for page_id=baidu_poc config=/path/to/my-config.yaml"
+
+# URL mode: direct URL, no config file needed
+hermes -q "Use playwright-page-capture for page_id=https://www.baidu.com feishu_chat_id=oc_xxxx"
 ```
 
 > Default config path: `~/.hermes/playwright-page-capture.yaml`
