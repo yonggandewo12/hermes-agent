@@ -552,9 +552,9 @@ function Install-Dependencies {
     
     # Install main package with all extras
     try {
-        & $UvCmd pip install -e ".[all]" 2>&1 | Out-Null
+        & $UvCmd pip install ".[all]" 2>&1 | Out-Null
     } catch {
-        & $UvCmd pip install -e "." | Out-Null
+        & $UvCmd pip install "." | Out-Null
     }
     
     Write-Success "Main package installed"

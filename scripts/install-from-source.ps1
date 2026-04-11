@@ -151,10 +151,10 @@ function Install-PythonDeps {
     Push-Location $InstallDir
     if (-not $NoVenv) { $env:VIRTUAL_ENV = Join-Path $InstallDir 'venv' }
     try {
-        & $UvCmd pip install -e '.[all]'
+        & $UvCmd pip install '.[all]'
     } catch {
         Write-Warn 'Full extras install failed, falling back to base install'
-        & $UvCmd pip install -e '.'
+        & $UvCmd pip install '.'
     }
     Pop-Location
     Write-Success 'Python package installation complete'

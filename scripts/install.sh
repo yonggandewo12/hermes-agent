@@ -872,11 +872,11 @@ install_deps() {
     # Install the main package in editable mode with all extras.
     # Try [all] first, fall back to base install if extras have issues.
     ALL_INSTALL_LOG=$(mktemp)
-    if ! $UV_CMD pip install -e ".[all]" 2>"$ALL_INSTALL_LOG"; then
+    if ! $UV_CMD pip install ".[all]" 2>"$ALL_INSTALL_LOG"; then
         log_warn "Full install (.[all]) failed, trying base install..."
         log_info "Reason: $(tail -5 "$ALL_INSTALL_LOG" | head -3)"
         rm -f "$ALL_INSTALL_LOG"
-        if ! $UV_CMD pip install -e "."; then
+        if ! $UV_CMD pip install "."; then
             log_error "Package installation failed."
             log_info "Check that build tools are installed: sudo apt install build-essential python3-dev"
             log_info "Then re-run: cd $INSTALL_DIR && uv pip install -e '.[all]'"

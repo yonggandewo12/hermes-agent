@@ -256,9 +256,9 @@ install_python_deps() {
   if [ "$USE_VENV" = false ]; then
     python_bin="python3"
   fi
-  if ! "$UV_CMD" pip install --python "$python_bin" -e ".[all]"; then
+  if ! "$UV_CMD" pip install --python "$python_bin" ".[all]"; then
     log_warn "Full extras install failed, falling back to base install"
-    "$UV_CMD" pip install --python "$python_bin" -e "."
+    "$UV_CMD" pip install --python "$python_bin" .
   fi
   log_success "Python package installation complete"
 }
