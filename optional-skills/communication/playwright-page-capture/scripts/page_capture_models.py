@@ -1,5 +1,27 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
+from pathlib import Path
+
+
+def resolve_storage_state_path(storage_state_path: str | None) -> str | None:
+    """
+    Resolve storage_state_path to an absolute path string for Playwright.
+
+    Rules:
+      - None → None (no auth state)
+      - Absolute path (starts with /) → use as-is
+      - Relative path → resolve against ~/.hermes/stats/ (create dir if needed)
+    """
+    if not storage_state_path:
+        return None
+    p = Path(storage_state_path).expanduser()
+    if p.is_absolute():
+        return str(p)
+    # Resolve relative to ~/.hermes/stats/
+    resolved = Path.home() / ".hermes" / "stats" / p
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    return str(resolved)
 
 
 @dataclass

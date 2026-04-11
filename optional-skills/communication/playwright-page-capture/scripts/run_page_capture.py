@@ -59,7 +59,7 @@ def _build_message_for_url(url: str, state: str, fields: dict[str, str]) -> str:
 def _is_url(page_id: str) -> bool:
     return page_id.startswith("http://") or page_id.startswith("https://")
 
-def run_capture_pipeline(*, config_path: str, page_id: str, feishu_client, browser_runner, feishu_chat_id: str | None = None):
+def run_capture_pipeline(*, config_path: str, page_id: str, feishu_client, browser_runner, feishu_chat_id: str | None = None, storage_state: str | None = None):
     # URL mode: page_id is a raw URL, bypass YAML config lookup
     if _is_url(page_id):
         from page_capture_models import page_definition_from_url
@@ -69,6 +69,8 @@ def run_capture_pipeline(*, config_path: str, page_id: str, feishu_client, brows
                 "Pass --feishu-chat-id <chat_id>"
             )
         page_def = page_definition_from_url(page_id, feishu_chat_id=feishu_chat_id)
+        if storage_state:
+            page_def.storage_state_path = storage_state
         runtime = browser_runner(page_def)
         dom_result = runtime.get("dom_result")
         if dom_result is None:
@@ -92,6 +94,9 @@ def run_capture_pipeline(*, config_path: str, page_id: str, feishu_client, brows
     # YAML config mode: look up page_id in config
     config = load_page_capture_config(config_path)
     page_def = next(page for page in config.pages if page.page_id == page_id)
+    # CLI --storage-state overrides YAML config
+    if storage_state:
+        page_def.storage_state_path = storage_state
     runtime = browser_runner(page_def)
     probe = probe_network_events(runtime["events"], page_def.network_probe.url_keywords)
     dom_result = runtime.get("dom_result")
@@ -148,14 +153,54 @@ def _default_config_path() -> Path:
     return Path.home() / ".hermes" / "playwright-page-capture.yaml"
 
 
+def run_dom_snapshot(url: str, storage_state_path: str | None = None, output_format: str = "html") -> dict:
+    """
+    Direct DOM snapshot — no Feishu required.
+    Returns full page HTML + structured elements + screenshot path as JSON.
+    """
+    from page_capture_browser import run_browser_snapshot
+    return run_browser_snapshot(
+        url,
+        storage_state_path=storage_state_path,
+        output_format=output_format,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=None)
     parser.add_argument("--page-id", required=True)
     parser.add_argument("--feishu-chat-id", default=None,
                         help="飞书群 chat_id，URL 模式（page_id 为 URL 时）必须指定；YAML 模式可覆盖配置文件中的 feishu_target.chat_id")
+    # DOM snapshot mode — no Feishu required
+    parser.add_argument("--dom", action="store_true",
+                        help="直接抓取页面 DOM/HTML，不发送飞书。配合 page_id=<url> --dom 使用。")
+    parser.add_argument("--storage-state",
+                        dest="storage_state",
+                        default=None,
+                        help="storage_state 文件路径（绝对或相对路径，相对于 ~/.hermes/stats/）")
+    parser.add_argument("--format", dest="output_format", default="html",
+                        choices=["html", "json"],
+                        help="输出格式：html（完整页面源码） 或 json（结构化元素树）")
+
     args = parser.parse_args()
 
+    # DOM snapshot mode — bypass Feishu entirely
+    if args.dom:
+        if not _is_url(args.page_id):
+            raise ValueError(
+                f"--dom mode requires a URL in page_id=, got: {args.page_id}\n"
+                "Example: python run_page_capture.py --page-id https://example.com --dom"
+            )
+        result = run_dom_snapshot(
+            url=args.page_id,
+            storage_state_path=args.storage_state,
+            output_format=args.output_format,
+        )
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+
+    # Normal Feishu mode
     config_path = args.config or str(_default_config_path())
     if not Path(config_path).exists():
         raise FileNotFoundError(
@@ -171,6 +216,7 @@ def main() -> int:
         feishu_client=client,
         browser_runner=run_browser_capture,
         feishu_chat_id=args.feishu_chat_id,
+        storage_state=args.storage_state,
     )
     print(json.dumps(result, ensure_ascii=False))
     return 0

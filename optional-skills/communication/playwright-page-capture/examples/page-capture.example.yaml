@@ -124,11 +124,16 @@ pages:
       chat_id: oc_xxxxxxxxxx
 
   # ── 示例 5: 带登录态的抓取（storage_state）────────────────
-  # 使用预先登录导出的 storage_state 文件
+  # storage_state_path 支持：
+  #   - 绝对路径：/absolute/path/to/login.json
+  #   - 相对路径：github_com.js → ~/.hermes/stats/github_com.js
+  #             feishu/oc_xxx.js → ~/.hermes/stats/feishu/oc_xxx.js
+  # 用 /capture-auth-login <url> 生成 storage_state 文件
   - page_id: logged_in_page
     name: 已登录页面内容
     url: https://example.com/private/dashboard
-    storage_state_path: /path/to/login-state.json
+    storage_state_path: github_com.js   # 相对路径，解析为 ~/.hermes/stats/github_com.js
+    # storage_state_path: /tmp/login-state.json  # 绝对路径示例
     wait_for:
       load_state: networkidle
       selector: ".user-info"

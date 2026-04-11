@@ -498,6 +498,12 @@ def do_install(identifier: str, category: str = "", force: bool = False,
             clear_skills_system_prompt_cache(clear_snapshot=True)
         except Exception:
             pass
+        # Refresh in-process skill command registry so autocomplete sees the new skill
+        try:
+            from agent.skill_commands import scan_skill_commands
+            scan_skill_commands()
+        except Exception:
+            pass
     else:
         c.print("[dim]Skill will be available in your next session.[/]")
         c.print("[dim]Use /reset to start a new session now, or --now to activate immediately (invalidates prompt cache).[/]\n")
@@ -713,6 +719,11 @@ def do_uninstall(name: str, console: Optional[Console] = None,
             try:
                 from agent.prompt_builder import clear_skills_system_prompt_cache
                 clear_skills_system_prompt_cache(clear_snapshot=True)
+            except Exception:
+                pass
+            try:
+                from agent.skill_commands import scan_skill_commands
+                scan_skill_commands()
             except Exception:
                 pass
         else:

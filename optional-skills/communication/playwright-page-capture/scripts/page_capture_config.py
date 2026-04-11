@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import yaml
@@ -38,7 +39,7 @@ def load_page_capture_config(path: str | Path) -> PageCaptureConfig:
                 wait_for=WaitForConfig(**item.get("wait_for", {})),
                 network_probe=NetworkProbeConfig(**item.get("network_probe", {})),
                 dom_fields=[DomFieldRule(**rule) for rule in item.get("dom_fields", [])],
-                feishu_target=FeishuTarget(**item["feishu_target"]),
+                feishu_target=FeishuTarget(**item["feishu_target"]) if "feishu_target" in item else None,
                 storage_state_path=item.get("storage_state_path"),
             )
         )
@@ -53,4 +54,5 @@ def load_page_capture_config(path: str | Path) -> PageCaptureConfig:
     return PageCaptureConfig(
         pages=pages,
         feishu=feishu_config,
+        storage_state_path=os.path.expanduser(raw.get("storage_state_path") or ""),
     )

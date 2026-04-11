@@ -1356,12 +1356,11 @@ def _looks_like_slash_command(text: str) -> bool:
 
 from agent.skill_commands import (
     scan_skill_commands,
+    get_skill_commands,
     build_skill_invocation_message,
     build_plan_path,
     build_preloaded_skills_prompt,
 )
-
-_skill_commands = scan_skill_commands()
 
 
 def _get_plugin_cmd_handler_names() -> set:
@@ -3338,9 +3337,9 @@ class HermesCLI:
             for cmd, desc in commands.items():
                 ChatConsole().print(f"    [bold {_accent_hex()}]{cmd:<15}[/] [dim]-[/] {_escape(desc)}")
 
-        if _skill_commands:
-            _cprint(f"\n  ⚡ {_BOLD}Skill Commands{_RST} ({len(_skill_commands)} installed):")
-            for cmd, info in sorted(_skill_commands.items()):
+        if (_sc := get_skill_commands()):
+            _cprint(f"\n  ⚡ {_BOLD}Skill Commands{_RST} ({len(_sc)} installed):")
+            for cmd, info in sorted(_sc.items()):
                 ChatConsole().print(
                     f"    [bold {_accent_hex()}]{cmd:<22}[/] [dim]-[/] {_escape(info['description'])}"
                 )
@@ -4900,13 +4899,13 @@ class HermesCLI:
                     except Exception as e:
                         _cprint(f"\033[1;31mPlugin command error: {e}{_RST}")
             # Check for skill slash commands (/gif-search, /axolotl, etc.)
-            elif base_cmd in _skill_commands:
+            elif base_cmd in get_skill_commands():
                 user_instruction = cmd_original[len(base_cmd):].strip()
                 msg = build_skill_invocation_message(
                     base_cmd, user_instruction, task_id=self.session_id
                 )
                 if msg:
-                    skill_name = _skill_commands[base_cmd]["name"]
+                    skill_name = get_skill_commands()[base_cmd]["name"]
                     print(f"\n⚡ Loading skill: {skill_name}")
                     if hasattr(self, '_pending_input'):
                         self._pending_input.put(msg)
@@ -4918,7 +4917,7 @@ class HermesCLI:
                 # that execution-time resolution agrees with tab-completion.
                 from hermes_cli.commands import COMMANDS
                 typed_base = cmd_lower.split()[0]
-                all_known = set(COMMANDS) | set(_skill_commands)
+                all_known = set(COMMANDS) | set(get_skill_commands())
                 matches = [c for c in all_known if c.startswith(typed_base)]
                 if len(matches) > 1:
                     # Prefer an exact match (typed the full command name)
@@ -7932,7 +7931,7 @@ class HermesCLI:
 
 
         _completer = SlashCommandCompleter(
-            skill_commands_provider=lambda: _skill_commands,
+            skill_commands_provider=get_skill_commands,
         )
         input_area = TextArea(
             height=Dimension(min=1, max=8, preferred=1),

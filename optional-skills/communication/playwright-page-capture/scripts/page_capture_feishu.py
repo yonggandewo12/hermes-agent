@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import requests
 
 
@@ -21,12 +22,12 @@ class FeishuAppClient:
     def send_text(self, *, chat_id: str, text: str) -> str:
         token = self._get_tenant_access_token()
         response = requests.post(
-            f"{self.base_url}/im/v1/messages",
+            f"{self.base_url}/im/v1/messages?receive_id_type=chat_id",
             headers={"Authorization": f"Bearer {token}"},
             json={
                 "receive_id": chat_id,
                 "msg_type": "text",
-                "content": '{"text": "%s"}' % text.replace('"', '\\"'),
+                "content": json.dumps({"text": text}),
             },
             timeout=15,
         )

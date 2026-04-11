@@ -204,7 +204,9 @@ def scan_skill_commands() -> Dict[str, Dict[str, Any]]:
         Dict mapping "/skill-name" to {name, description, skill_md_path, skill_dir}.
     """
     global _skill_commands
-    _skill_commands = {}
+    # Update in-place so existing references (e.g. autocomplete lambda in cli.py)
+    # automatically see the new entries without needing to reload the module.
+    _skill_commands.clear()
     try:
         from tools.skills_tool import SKILLS_DIR, _parse_frontmatter, skill_matches_platform, _get_disabled_skill_names
         from agent.skill_utils import get_external_skills_dirs
