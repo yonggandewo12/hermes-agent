@@ -151,10 +151,11 @@ function Install-PythonDeps {
     Push-Location $InstallDir
     if (-not $NoVenv) { $env:VIRTUAL_ENV = Join-Path $InstallDir 'venv' }
     try {
-        & $UvCmd pip install '.[all]'
+        # --no-compile: skip .pyc generation (faster install, compiled on first import)
+        & $UvCmd pip install --no-compile '.[all]'
     } catch {
         Write-Warn 'Full extras install failed, falling back to base install'
-        & $UvCmd pip install '.'
+        & $UvCmd pip install --no-compile '.'
     }
     Pop-Location
     Write-Success 'Python package installation complete'
@@ -165,15 +166,49 @@ function Install-NodeDeps {
         Write-Info 'Skipping Node.js dependencies because Node.js is unavailable'
         return
     }
+
+    # Faster npm flags: skip audit/fund checks, prefer cached packages
+    $npmFlags = '--silent --no-audit --no-fund --prefer-offline'
+
     Push-Location $InstallDir
-    if (Test-Path 'package.json') {
-        try { npm install --silent } catch { Write-Warn 'npm install failed in repo root' }
-    }
     $bridgeDir = Join-Path $InstallDir 'scripts\whatsapp-bridge'
-    if (Test-Path (Join-Path $bridgeDir 'package.json')) {
-        Push-Location $bridgeDir
-        try { npm install --silent } catch { Write-Warn 'npm install failed in whatsapp bridge' }
-        Pop-Location
+    $hasBridge = Test-Path (Join-Path $bridgeDir 'package.json')
+
+    if ($hasBridge) {
+        # Run repo npm and whatsapp-bridge npm in parallel
+        $repoJob = Start-Job -ScriptBlock {
+            param($dir, $flags)
+            Set-Location $dir
+            try { npm install $flags } catch { Write-Warn 'npm install failed in repo root' }
+        } -ArgumentList $InstallDir, $npmFlags
+
+        $bridgeJob = Start-Job -ScriptBlock {
+            param($dir, $flags)
+            Set-Location $dir
+            try { npm install $flags } catch { Write-Warn 'npm install failed in whatsapp bridge' }
+        } -ArgumentList $bridgeDir, $npmFlags
+
+        Wait-Job $repoJob | Out-Null
+        Receive-Job $repoJob -Wait | Out-Null
+        Remove-Job $repoJob -Force
+
+        Wait-Job $bridgeJob | Out-Null
+        Receive-Job $bridgeJob -Wait | Out-Null
+        Remove-Job $bridgeJob -Force
+    } else {
+        if (Test-Path 'package.json') {
+            try { npm install $npmFlags } catch { Write-Warn 'npm install failed in repo root' }
+        }
+    }
+
+    if (Test-Path 'package.json') {
+        Write-Info 'Installing Playwright Chromium browser...'
+        try {
+            npx playwright install chromium | Out-Null
+            Write-Success 'Playwright Chromium installed'
+        } catch {
+            Write-Warn 'Playwright Chromium install failed'
+        }
     }
     Pop-Location
 }
@@ -220,14 +255,26 @@ function Run-SetupWizard {
         Write-Info 'Skipping setup wizard (-SkipSetup)'
         return
     }
-    if ($NoVenv) { return }
     Push-Location $InstallDir
-    & '.\venv\Scripts\python.exe' -m hermes_cli.main setup
+    if (-not $NoVenv) {
+        & '.\venv\Scripts\python.exe' -m hermes_cli.main setup
+    } elseif (Get-Command python -ErrorAction SilentlyContinue) {
+        python -m hermes_cli.main setup
+    } else {
+        Write-Warn 'Skipping setup wizard because no Python executable is available on PATH'
+    }
     Pop-Location
 }
 
 function Verify-Install {
-    $hermesExe = Join-Path $InstallDir 'venv\Scripts\hermes.exe'
+    if (-not $NoVenv) {
+        $hermesExe = Join-Path $InstallDir 'venv\Scripts\hermes.exe'
+    } else {
+        $hermesExe = Get-Command hermes -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue
+    }
+    if (-not $hermesExe -or -not (Test-Path $hermesExe)) {
+        throw 'hermes executable not found for verification'
+    }
     & $hermesExe --version
     & $hermesExe doctor
     Write-Success 'End-to-end source installation verification passed'

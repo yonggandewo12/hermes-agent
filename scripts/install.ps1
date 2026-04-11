@@ -551,10 +551,11 @@ function Install-Dependencies {
     }
     
     # Install main package with all extras
+    # --no-compile: skip .pyc generation (faster install, compiled on first import)
     try {
-        & $UvCmd pip install ".[all]" 2>&1 | Out-Null
+        & $UvCmd pip install --no-compile ".[all]" 2>&1 | Out-Null
     } catch {
-        & $UvCmd pip install "." | Out-Null
+        & $UvCmd pip install --no-compile "." | Out-Null
     }
     
     Write-Success "Main package installed"
@@ -708,33 +709,46 @@ function Install-NodeDeps {
         Write-Info "Skipping Node.js dependencies (Node not installed)"
         return
     }
-    
+
+    # Faster npm flags: skip audit/fund checks, prefer cached packages
+    $npmFlags = "--silent --no-audit --no-fund --prefer-offline"
+
     Push-Location $InstallDir
-    
+
     if (Test-Path "package.json") {
         Write-Info "Installing Node.js dependencies (browser tools)..."
         try {
-            npm install --silent 2>&1 | Out-Null
+            npm install $npmFlags 2>&1 | Out-Null
             Write-Success "Node.js dependencies installed"
         } catch {
             Write-Warn "npm install failed (browser tools may not work)"
         }
     }
-    
+
     # Install WhatsApp bridge dependencies
     $bridgeDir = "$InstallDir\scripts\whatsapp-bridge"
     if (Test-Path "$bridgeDir\package.json") {
         Write-Info "Installing WhatsApp bridge dependencies..."
         Push-Location $bridgeDir
         try {
-            npm install --silent 2>&1 | Out-Null
+            npm install $npmFlags 2>&1 | Out-Null
             Write-Success "WhatsApp bridge dependencies installed"
         } catch {
             Write-Warn "WhatsApp bridge npm install failed (WhatsApp may not work)"
         }
         Pop-Location
     }
-    
+
+    if (Test-Path "package.json") {
+        Write-Info "Installing Playwright Chromium browser..."
+        try {
+            npx playwright install chromium 2>&1 | Out-Null
+            Write-Success "Playwright Chromium installed"
+        } catch {
+            Write-Warn "Playwright Chromium install failed"
+        }
+    }
+
     Pop-Location
 }
 
@@ -743,20 +757,22 @@ function Invoke-SetupWizard {
         Write-Info "Skipping setup wizard (-SkipSetup)"
         return
     }
-    
+
     Write-Host ""
     Write-Info "Starting setup wizard..."
     Write-Host ""
-    
+
     Push-Location $InstallDir
-    
+
     # Run hermes setup using the venv Python directly (no activation needed)
     if (-not $NoVenv) {
         & ".\venv\Scripts\python.exe" -m hermes_cli.main setup
-    } else {
+    } elseif (Get-Command python -ErrorAction SilentlyContinue) {
         python -m hermes_cli.main setup
+    } else {
+        Write-Warn "Skipping setup wizard because no Python executable is available on PATH"
     }
-    
+
     Pop-Location
 }
 
@@ -866,8 +882,12 @@ function Write-Completion {
     
     if (-not $HasNode) {
         Write-Host "Note: Node.js could not be installed automatically." -ForegroundColor Yellow
-        Write-Host "Browser tools need Node.js. Install manually:" -ForegroundColor Yellow
+        Write-Host "Browser tools and Playwright page capture need Node.js + Chromium." -ForegroundColor Yellow
+        Write-Host "Install manually:" -ForegroundColor Yellow
         Write-Host "  https://nodejs.org/en/download/" -ForegroundColor Yellow
+        Write-Host "Then run in the repo:" -ForegroundColor Yellow
+        Write-Host "  npm install" -ForegroundColor Yellow
+        Write-Host "  npx playwright install chromium" -ForegroundColor Yellow
         Write-Host ""
     }
     

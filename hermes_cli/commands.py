@@ -16,6 +16,17 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+
+def get_dynamic_subcommands(base_cmd: str) -> list[str]:
+    """Return dynamic subcommands for slash commands that need runtime data."""
+    if base_cmd != "/skills":
+        return []
+    try:
+        from hermes_cli.skills_hub import list_installed_skill_run_targets
+        return [item["command"] for item in list_installed_skill_run_targets()]
+    except Exception:
+        return []
+
 from prompt_toolkit.auto_suggest import AutoSuggest, Suggestion
 from prompt_toolkit.completion import Completer, Completion
 
@@ -110,9 +121,9 @@ COMMAND_REGISTRY: list[CommandDef] = [
                args_hint="[list|disable|enable] [name...]", cli_only=True),
     CommandDef("toolsets", "List available toolsets", "Tools & Skills",
                cli_only=True),
-    CommandDef("skills", "Search, install, inspect, or manage skills",
+    CommandDef("skills", "Search, install, inspect, run, or manage skills",
                "Tools & Skills", cli_only=True,
-               subcommands=("search", "browse", "inspect", "install")),
+               subcommands=("search", "browse", "inspect", "install", "run")),
     CommandDef("cron", "Manage scheduled tasks", "Tools & Skills",
                cli_only=True, args_hint="[subcommand]",
                subcommands=("list", "add", "create", "edit", "pause", "resume", "run", "remove")),
@@ -917,9 +928,13 @@ class SlashCommandCompleter(Completer):
                 yield from self._model_completions(sub_text, sub_lower)
                 return
 
-            # Static subcommand completions
-            if " " not in sub_text and base_cmd in SUBCOMMANDS:
-                for sub in SUBCOMMANDS[base_cmd]:
+            # Static + dynamic subcommand completions
+            if " " not in sub_text:
+                subcommands = list(SUBCOMMANDS.get(base_cmd, []))
+                for sub in get_dynamic_subcommands(base_cmd):
+                    if sub not in subcommands:
+                        subcommands.append(sub)
+                for sub in subcommands:
                     if sub.startswith(sub_lower) and sub != sub_lower:
                         yield Completion(
                             sub,
@@ -998,10 +1013,14 @@ class SlashCommandAutoSuggest(AutoSuggest):
         sub_text = parts[1] if len(parts) > 1 else ""
         sub_lower = sub_text.lower()
 
-        # Static subcommands
-        if base_cmd in SUBCOMMANDS and SUBCOMMANDS[base_cmd]:
+        # Static + dynamic subcommands
+        subcommands = list(SUBCOMMANDS.get(base_cmd, []))
+        for sub in get_dynamic_subcommands(base_cmd):
+            if sub not in subcommands:
+                subcommands.append(sub)
+        if subcommands:
             if " " not in sub_text:
-                for sub in SUBCOMMANDS[base_cmd]:
+                for sub in subcommands:
                     if sub.startswith(sub_lower) and sub != sub_lower:
                         return Suggestion(sub[len(sub_text):])
 

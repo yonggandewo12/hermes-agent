@@ -14,6 +14,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional
+import shlex
 
 from rich.console import Console
 from rich.panel import Panel
@@ -139,6 +140,62 @@ def _derive_category_from_install_path(install_path: str) -> str:
     path = Path(install_path)
     parent = str(path.parent)
     return "" if parent == "." else parent
+
+
+def list_installed_skill_run_targets() -> list[dict[str, str]]:
+    """Return installed skills that can be launched via `/skills <name> ...`."""
+    from agent.skill_commands import get_skill_commands
+
+    entries: list[dict[str, str]] = []
+    for cmd, info in get_skill_commands().items():
+        entries.append({
+            "command": cmd.lstrip("/"),
+            "name": str(info.get("name", "") or cmd.lstrip("/")),
+            "description": str(info.get("description", "") or "Skill command"),
+        })
+
+    def _sort_key(item: dict[str, str]) -> tuple[int, str]:
+        command = item["command"]
+        if command == "playwright-page-capture":
+            return (0, command)
+        return (1, command)
+
+    return sorted(entries, key=_sort_key)
+
+
+def _resolve_installed_skill_command(name: str) -> str:
+    """Resolve an installed skill name to its slash command form."""
+    from agent.skill_commands import get_skill_commands
+
+    candidate = (name or "").strip().lower().replace("_", "-")
+    if not candidate:
+        return ""
+
+    commands = get_skill_commands()
+    exact_key = f"/{candidate}"
+    if exact_key in commands:
+        return exact_key
+
+    matches = [cmd for cmd, info in commands.items() if str(info.get("name", "")).lower() == candidate]
+    if len(matches) == 1:
+        return matches[0]
+    return ""
+
+
+def build_skill_run_message(name: str, instruction: str, task_id: str | None = None) -> tuple[str | None, str | None]:
+    """Build an invocation payload for an already-installed skill."""
+    from agent.skill_commands import build_skill_invocation_message, get_skill_commands
+
+    cmd_key = _resolve_installed_skill_command(name)
+    if not cmd_key:
+        return None, None
+
+    msg = build_skill_invocation_message(cmd_key, instruction, task_id=task_id)
+    if not msg:
+        return None, None
+
+    skill_name = get_skill_commands().get(cmd_key, {}).get("name") or cmd_key.lstrip("/")
+    return msg, str(skill_name)
 
 
 def do_search(query: str, source: str = "all", limit: int = 10,
@@ -1010,15 +1067,17 @@ def skills_command(args) -> None:
             return
         do_tap(tap_action, repo=repo)
     else:
-        _console.print("Usage: hermes skills [browse|search|install|inspect|list|check|update|audit|uninstall|publish|snapshot|tap]\n")
+        _console.print("Usage: hermes skills [browse|search|install|inspect|run|list|check|update|audit|uninstall|publish|snapshot|tap]\n")
         _console.print("Run 'hermes skills <command> --help' for details.\n")
+
+    return None
 
 
 # ---------------------------------------------------------------------------
 # Slash command entry point (/skills in chat)
 # ---------------------------------------------------------------------------
 
-def handle_skills_slash(cmd: str, console: Optional[Console] = None) -> None:
+def handle_skills_slash(cmd: str, console: Optional[Console] = None, *, task_id: str | None = None) -> str | None:
     """
     Parse and dispatch `/skills <subcommand> [args]` from the chat interface.
 
@@ -1039,7 +1098,10 @@ def handle_skills_slash(cmd: str, console: Optional[Console] = None) -> None:
         /skills tap remove owner/repo
     """
     c = console or _console
-    parts = cmd.strip().split()
+    try:
+        parts = shlex.split(cmd.strip())
+    except ValueError:
+        parts = cmd.strip().split()
 
     # Strip the leading "/skills" if present
     if parts and parts[0].lower() == "/skills":
@@ -1047,7 +1109,7 @@ def handle_skills_slash(cmd: str, console: Optional[Console] = None) -> None:
 
     if not parts:
         _print_skills_help(c)
-        return
+        return None
 
     action = parts[0].lower()
     args = parts[1:]
@@ -1123,8 +1185,30 @@ def handle_skills_slash(cmd: str, console: Optional[Console] = None) -> None:
     elif action == "inspect":
         if not args:
             c.print("[bold red]Usage:[/] /skills inspect <identifier>\n")
-            return
+            return None
         do_inspect(args[0], console=c)
+
+    elif action == "run":
+        if not args:
+            c.print("[bold red]Usage:[/] /skills run <installed-skill-name> [instruction]\n")
+            return None
+        skill_name = args[0]
+        instruction = " ".join(args[1:]).strip()
+        msg, resolved_name = build_skill_run_message(skill_name, instruction, task_id=task_id)
+        if not msg:
+            c.print(f"[bold red]Error:[/] Installed skill not found: {skill_name}\n")
+            return None
+        c.print(f"\n⚡ Loading skill: {resolved_name}")
+        return msg
+
+    elif _resolve_installed_skill_command(action):
+        instruction = " ".join(args).strip()
+        msg, resolved_name = build_skill_run_message(action, instruction, task_id=task_id)
+        if not msg:
+            c.print(f"[bold red]Error:[/] Installed skill not found: {action}\n")
+            return None
+        c.print(f"\n⚡ Loading skill: {resolved_name}")
+        return msg
 
     elif action == "list":
         source_filter = "all"
@@ -1201,12 +1285,23 @@ def handle_skills_slash(cmd: str, console: Optional[Console] = None) -> None:
 
 def _print_skills_help(console: Console) -> None:
     """Print help for the /skills slash command."""
+    installed = list_installed_skill_run_targets()
+    installed_lines = ""
+    if installed:
+        installed_lines = "\n[bold]Installed skill shortcuts:[/]\n" + "\n".join(
+            f"  [cyan]{item['command']}[/] <instruction>  {item['description'][:48]}"
+            for item in installed[:12]
+        )
+        if len(installed) > 12:
+            installed_lines += "\n  [dim]...[/]"
+
     console.print(Panel(
         "[bold]Skills Hub Commands:[/]\n\n"
         "  [cyan]browse[/] [--source official]   Browse all available skills (paginated)\n"
         "  [cyan]search[/] <query>              Search registries for skills\n"
         "  [cyan]install[/] <identifier>        Install a skill (with security scan)\n"
         "  [cyan]inspect[/] <identifier>        Preview a skill without installing\n"
+        "  [cyan]run[/] <name> [instruction]    Run an installed skill\n"
         "  [cyan]list[/] [--source hub|builtin|local] List installed skills\n"
         "  [cyan]check[/] [name]                Check hub skills for upstream updates\n"
         "  [cyan]update[/] [name]               Update hub skills with upstream changes\n"
@@ -1214,6 +1309,7 @@ def _print_skills_help(console: Console) -> None:
         "  [cyan]uninstall[/] <name>            Remove a hub-installed skill\n"
         "  [cyan]publish[/] <path> --repo <r>   Publish a skill to GitHub via PR\n"
         "  [cyan]snapshot[/] export|import      Export/import skill configurations\n"
-        "  [cyan]tap[/] list|add|remove         Manage skill sources\n",
+        "  [cyan]tap[/] list|add|remove         Manage skill sources\n"
+        f"{installed_lines}\n",
         title="/skills",
     ))

@@ -4562,7 +4562,9 @@ class HermesCLI:
     def _handle_skills_command(self, cmd: str):
         """Handle /skills slash command — delegates to hermes_cli.skills_hub."""
         from hermes_cli.skills_hub import handle_skills_slash
-        handle_skills_slash(cmd, ChatConsole())
+        msg = handle_skills_slash(cmd, ChatConsole(), task_id=self.session_id)
+        if msg and hasattr(self, '_pending_input'):
+            self._pending_input.put(msg)
 
     def _show_gateway_status(self):
         """Show status of the gateway and connected messaging platforms."""

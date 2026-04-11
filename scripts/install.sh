@@ -551,12 +551,13 @@ install_system_packages() {
     # ── macOS: brew ──
     if [ "$OS" = "macos" ]; then
         if command -v brew &> /dev/null; then
-            log_info "Installing ${pkgs[*]} via Homebrew..."
-            if brew install "${pkgs[@]}"; then
-                [ "$need_ripgrep" = true ] && HAS_RIPGREP=true && log_success "ripgrep installed"
-                [ "$need_ffmpeg" = true ]  && HAS_FFMPEG=true  && log_success "ffmpeg installed"
-                return 0
-            fi
+            # macOS: both ripgrep and ffmpeg require slow builds from source on this OS version.
+            # Both are optional; skip both for faster install.
+            [ "$need_ripgrep" = true ] && log_warn "Skipping ripgrep on macOS (slow build)"
+            [ "$need_ffmpeg" = true ] && log_warn "Skipping ffmpeg on macOS (slow build)"
+            [ "$need_ripgrep" = true ] && log_info "Install manually if needed: brew install ripgrep"
+            [ "$need_ffmpeg" = true ] && log_info "Install manually if needed: brew install ffmpeg"
+            return 0
         fi
         log_warn "Could not auto-install (brew not found or install failed)"
         log_info "Install manually: brew install ${pkgs[*]}"
@@ -871,12 +872,13 @@ install_deps() {
 
     # Install the main package in editable mode with all extras.
     # Try [all] first, fall back to base install if extras have issues.
+    # --no-compile: skip .pyc generation (faster install, compiled on first import)
     ALL_INSTALL_LOG=$(mktemp)
-    if ! $UV_CMD pip install ".[all]" 2>"$ALL_INSTALL_LOG"; then
+    if ! $UV_CMD pip install --no-compile ".[all]" 2>"$ALL_INSTALL_LOG"; then
         log_warn "Full install (.[all]) failed, trying base install..."
         log_info "Reason: $(tail -5 "$ALL_INSTALL_LOG" | head -3)"
         rm -f "$ALL_INSTALL_LOG"
-        if ! $UV_CMD pip install "."; then
+        if ! $UV_CMD pip install --no-compile "."; then
             log_error "Package installation failed."
             log_info "Check that build tools are installed: sudo apt install build-essential python3-dev"
             log_info "Then re-run: cd $INSTALL_DIR && uv pip install -e '.[all]'"
@@ -1074,48 +1076,51 @@ install_node_deps() {
     fi
 
     if [ -f "$INSTALL_DIR/package.json" ]; then
-        log_info "Installing Node.js dependencies (browser tools)..."
-        cd "$INSTALL_DIR"
-        npm install --silent 2>/dev/null || {
-            log_warn "npm install failed (browser tools may not work)"
-        }
-        log_success "Node.js dependencies installed"
+        # Faster npm flags: skip audit/fund checks, prefer cached packages
+        local npm_flags="--silent --no-audit --no-fund --prefer-offline"
 
-        # Install Playwright browser + system dependencies.
-        # Playwright's install-deps only supports apt/dnf/zypper natively.
-        # For Arch/Manjaro we install the system libs via pacman first.
-        log_info "Installing browser engine (Playwright Chromium)..."
-        case "$DISTRO" in
-            arch|manjaro)
-                if command -v pacman &> /dev/null; then
-                    log_info "Arch/Manjaro detected — installing Chromium system dependencies via pacman..."
-                    if command -v sudo &> /dev/null && sudo -n true 2>/dev/null; then
-                        sudo NEEDRESTART_MODE=a pacman -S --noconfirm --needed \
-                            nss atk at-spi2-core cups libdrm libxkbcommon mesa pango cairo alsa-lib >/dev/null 2>&1 || true
-                    elif [ "$(id -u)" -eq 0 ]; then
-                        pacman -S --noconfirm --needed \
-                            nss atk at-spi2-core cups libdrm libxkbcommon mesa pango cairo alsa-lib >/dev/null 2>&1 || true
-                    else
-                        log_warn "Cannot install browser deps without sudo. Run manually:"
-                        log_warn "  sudo pacman -S nss atk at-spi2-core cups libdrm libxkbcommon mesa pango cairo alsa-lib"
+        log_info "Installing Node.js dependencies and browser engine (parallel)..."
+        install_repo_deps() {
+            cd "$INSTALL_DIR"
+            npm install $npm_flags 2>/dev/null || {
+                log_warn "npm install failed (browser tools may not work)"
+            }
+        }
+
+        install_playwright() {
+            case "$DISTRO" in
+                arch|manjaro)
+                    if command -v pacman &> /dev/null; then
+                        log_info "Arch/Manjaro — installing Chromium system deps via pacman..."
+                        if command -v sudo &> /dev/null && sudo -n true 2>/dev/null; then
+                            sudo NEEDRESTART_MODE=a pacman -S --noconfirm --needed \
+                                nss atk at-spi2-core cups libdrm libxkbcommon mesa pango cairo alsa-lib >/dev/null 2>&1 || true
+                        elif [ "$(id -u)" -eq 0 ]; then
+                            pacman -S --noconfirm --needed \
+                                nss atk at-spi2-core cups libdrm libxkbcommon mesa pango cairo alsa-lib >/dev/null 2>&1 || true
+                        else
+                            log_warn "Cannot install browser deps without sudo."
+                        fi
                     fi
-                fi
-                cd "$INSTALL_DIR" && npx playwright install chromium 2>/dev/null || true
-                ;;
-            *)
-                log_info "Playwright may request sudo to install browser system dependencies (shared libraries)."
-                log_info "This is standard Playwright setup — Hermes itself does not require root access."
-                cd "$INSTALL_DIR" && npx playwright install --with-deps chromium 2>/dev/null || true
-                ;;
-        esac
-        log_success "Browser engine installed"
+                    cd "$INSTALL_DIR" && npx playwright install chromium 2>/dev/null || true
+                    ;;
+                *)
+                    cd "$INSTALL_DIR" && npx playwright install --with-deps chromium 2>/dev/null || true
+                    ;;
+            esac
+        }
+
+        install_repo_deps &
+        install_playwright &
+        wait
+        log_success "Node.js dependencies and browser engine installed"
     fi
 
     # Install WhatsApp bridge dependencies
     if [ -f "$INSTALL_DIR/scripts/whatsapp-bridge/package.json" ]; then
         log_info "Installing WhatsApp bridge dependencies..."
         cd "$INSTALL_DIR/scripts/whatsapp-bridge"
-        npm install --silent 2>/dev/null || {
+        npm install $npm_flags 2>/dev/null || {
             log_warn "WhatsApp bridge npm install failed (WhatsApp may not work)"
         }
         log_success "WhatsApp bridge dependencies installed"

@@ -212,7 +212,12 @@ install_optional_system_packages() {
   if ! command -v rg >/dev/null 2>&1; then
     log_warn "ripgrep not found; attempting install"
     case "$(uname -s)" in
-      Darwin*) command -v brew >/dev/null 2>&1 && brew install ripgrep || true ;;
+      Darwin*)
+        # macOS: skip ripgrep (no bottle → builds llvm@21 from source → hours)
+        # ripgrep is optional; grep fallback is always available
+        log_warn "Skipping ripgrep on macOS (brew would build llvm@21 from source — too slow)"
+        log_info "Install manually if needed: brew install ripgrep"
+        ;;
       Linux*)
         if command -v apt-get >/dev/null 2>&1; then sudo apt-get install -y ripgrep || true
         elif command -v dnf >/dev/null 2>&1; then sudo dnf install -y ripgrep || true
@@ -225,7 +230,12 @@ install_optional_system_packages() {
   if ! command -v ffmpeg >/dev/null 2>&1; then
     log_warn "ffmpeg not found; attempting install"
     case "$(uname -s)" in
-      Darwin*) command -v brew >/dev/null 2>&1 && brew install ffmpeg || true ;;
+      Darwin*)
+        # macOS: ffmpeg builds many deps from source on this OS version — too slow
+        # TTS voice messages will be limited; skip for faster install
+        log_warn "Skipping ffmpeg on macOS (slow build from source)"
+        log_info "Install manually if needed: brew install ffmpeg"
+        ;;
       Linux*)
         if command -v apt-get >/dev/null 2>&1; then sudo apt-get install -y ffmpeg || true
         elif command -v dnf >/dev/null 2>&1; then sudo dnf install -y ffmpeg || true
@@ -256,9 +266,10 @@ install_python_deps() {
   if [ "$USE_VENV" = false ]; then
     python_bin="python3"
   fi
-  if ! "$UV_CMD" pip install --python "$python_bin" ".[all]"; then
+  # --no-compile: skip .pyc generation (faster install, compiled on first import)
+  if ! "$UV_CMD" pip install --python "$python_bin" --no-compile ".[all]"; then
     log_warn "Full extras install failed, falling back to base install"
-    "$UV_CMD" pip install --python "$python_bin" .
+    "$UV_CMD" pip install --python "$python_bin" --no-compile .
   fi
   log_success "Python package installation complete"
 }
@@ -269,11 +280,49 @@ install_node_deps() {
     return 0
   fi
   cd "$INSTALL_DIR"
-  npm install --silent || log_warn "npm install failed in repo root"
+
+  # Use faster npm flags: skip audit/fund checks, prefer cached packages
+  local npm_flags="--silent --no-audit --no-fund --prefer-offline"
+
+  install_repo_npm() {
+    npm install $npm_flags || log_warn "npm install failed in repo root"
+  }
+
+  install_playwright_browser() {
+    if [ ! -f "$INSTALL_DIR/package.json" ]; then
+      return 0
+    fi
+    case "$(uname -s)" in
+      Darwin*)
+        npx playwright install chromium || log_warn "Playwright Chromium install failed"
+        ;;
+      Linux*)
+        if command -v sudo >/dev/null 2>&1; then
+          sudo npx playwright install --with-deps chromium || log_warn "Playwright Chromium install failed"
+        else
+          npx playwright install chromium || log_warn "Playwright Chromium install failed"
+        fi
+        ;;
+      *)
+        npx playwright install chromium || log_warn "Playwright Chromium install failed"
+        ;;
+    esac
+  }
+
   if [ -f "$INSTALL_DIR/scripts/whatsapp-bridge/package.json" ]; then
-    cd "$INSTALL_DIR/scripts/whatsapp-bridge"
-    npm install --silent || log_warn "npm install failed in whatsapp bridge"
+    install_whatsapp_npm() {
+      cd "$INSTALL_DIR/scripts/whatsapp-bridge"
+      npm install $npm_flags || log_warn "npm install failed in whatsapp bridge"
+    }
+    install_repo_npm &
+    install_whatsapp_npm &
+    wait
+  else
+    install_repo_npm
   fi
+
+  log_info "Installing Playwright Chromium browser..."
+  install_playwright_browser
 }
 
 setup_path() {
@@ -320,15 +369,31 @@ run_setup_wizard() {
     return 0
   fi
   cd "$INSTALL_DIR"
-  "$INSTALL_DIR/venv/bin/python" -m hermes_cli.main setup < /dev/tty
+  if [ "$USE_VENV" = true ] && [ -x "$INSTALL_DIR/venv/bin/python" ]; then
+    "$INSTALL_DIR/venv/bin/python" -m hermes_cli.main setup < /dev/tty
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -m hermes_cli.main setup < /dev/tty
+  else
+    log_warn "Skipping setup wizard because no Python executable is available"
+  fi
 }
 
 verify_install() {
   cd "$INSTALL_DIR"
   export PATH="$HOME/.local/bin:$PATH"
   log_info "Running installation verification..."
-  "$INSTALL_DIR/venv/bin/hermes" --version
-  "$INSTALL_DIR/venv/bin/hermes" doctor
+  local hermes_bin
+  if [ "$USE_VENV" = true ]; then
+    hermes_bin="$INSTALL_DIR/venv/bin/hermes"
+  else
+    hermes_bin="$(command -v hermes || true)"
+  fi
+  if [ -z "$hermes_bin" ] || [ ! -x "$hermes_bin" ]; then
+    log_error "hermes executable not found for verification"
+    exit 1
+  fi
+  "$hermes_bin" --version
+  "$hermes_bin" doctor
   log_success "End-to-end source installation verification passed"
 }
 
