@@ -48,3 +48,16 @@ class PageCaptureConfig:
 class BrowserLaunchOptions:
     headless: bool
     storage_state: str | None = None
+
+
+@dataclass
+class NetworkProbeResult:
+    hit: bool
+    url: str | None
+    status: int | None
+
+
+@dataclass
+class DomExtractionResult:
+    fields: dict[str, str]
+    missing_fields: list[str]
