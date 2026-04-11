@@ -118,6 +118,20 @@ All documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes
 
 ---
 
+### Playwright Page Capture Skill
+
+A page capture workflow can:
+- open a fixed page with Playwright
+- probe network responses
+- extract DOM fields
+- send results to a Feishu group
+
+Manual run example:
+
+hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc config=/abs/path/page-capture.yaml"
+
+---
+
 ## Migrating from OpenClaw
 
 If you're coming from OpenClaw, Hermes can automatically import your settings, memories, skills, and API keys.

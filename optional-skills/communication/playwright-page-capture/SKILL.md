@@ -22,3 +22,11 @@ metadata:
 1. 调用 `python optional-skills/communication/playwright-page-capture/scripts/run_page_capture.py ...`
 2. 输出统一 JSON 结果
 3. 使用同一 skill 支持手动与 cron 调用
+
+## Manual Trigger
+- 对话触发：`使用 playwright-page-capture 处理 page_id=baidu_poc config=/abs/path/page-capture.yaml`
+- CLI 触发：`hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc config=/abs/path/page-capture.yaml"`
+
+## Cron Trigger
+- 通过 `/cron add` 创建定时任务，prompt 中调用同一个 skill：
+  `使用 playwright-page-capture 处理 page_id=baidu_poc config=/abs/path/page-capture.yaml`

@@ -125,6 +125,20 @@ Hermes 有两个主要入口：一是直接运行 `hermes` 打开终端 UI；二
 
 ---
 
+### Playwright Page Capture Skill
+
+页面抓取工作流可以：
+- 使用 Playwright 打开固定页面
+- 探测网络响应
+- 提取 DOM 字段
+- 将结果发送到飞书群
+
+手动运行示例：
+
+hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc config=/abs/path/page-capture.yaml"
+
+---
+
 ## 从 OpenClaw 迁移
 
 如果你之前使用的是 OpenClaw，Hermes 可以自动导入你的配置、记忆、技能与 API keys。
