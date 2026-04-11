@@ -54,3 +54,29 @@ def test_load_page_capture_config_reads_baidu_poc_definition(tmp_path: Path):
     assert page.wait_for.load_state == "networkidle"
     assert page.dom_fields[1].attribute == "name"
     assert page.feishu_target.chat_id == "oc_test_chat"
+
+
+def test_load_page_capture_config_rejects_partial_feishu(tmp_path: Path):
+    """Partial feishu config (missing app_secret) raises ValueError."""
+    config_path = tmp_path / "page-capture.yaml"
+    config_path.write_text(
+        """
+        feishu:
+          app_id: cli_from_config
+        pages:
+          - page_id: baidu_poc
+            name: Baidu PoC
+            url: https://www.baidu.com
+            wait_for:
+              load_state: networkidle
+            network_probe:
+              url_keywords: [baidu.com]
+            dom_fields: []
+            feishu_target:
+              chat_id: oc_test_chat
+        """,
+        encoding="utf-8",
+    )
+    module = load_module()
+    with pytest.raises(ValueError, match="app_id and app_secret"):
+        module.load_page_capture_config(config_path)

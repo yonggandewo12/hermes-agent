@@ -43,7 +43,14 @@ def load_page_capture_config(path: str | Path) -> PageCaptureConfig:
             )
         )
     feishu = raw.get("feishu")
+    if feishu:
+        if "app_id" in feishu and "app_secret" in feishu:
+            feishu_config = FeishuAppConfig(**feishu)
+        else:
+            raise ValueError("feishu config requires both app_id and app_secret")
+    else:
+        feishu_config = None
     return PageCaptureConfig(
         pages=pages,
-        feishu=FeishuAppConfig(**feishu) if feishu else None,
+        feishu=feishu_config,
     )

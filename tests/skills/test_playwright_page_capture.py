@@ -263,3 +263,140 @@ def test_normalize_runtime_result_returns_fetch_failed_on_navigation_error() -> 
     assert result["fetch_error"] == "timeout"
     assert result["login_required"] is False
     assert result["events"] == []
+
+
+def test_build_feishu_client_uses_hermes_global_config(monkeypatch, tmp_path: Path) -> None:
+    """Priority 2: falls back to Hermes global config when page-capture config has no feishu."""
+    config_path = tmp_path / "page-capture.yaml"
+    config_path.write_text(
+        """
+        pages:
+          - page_id: baidu_poc
+            name: Baidu PoC
+            url: https://www.baidu.com
+            wait_for:
+              load_state: networkidle
+            network_probe:
+              url_keywords: [baidu.com]
+            dom_fields: []
+            feishu_target:
+              chat_id: oc_test_chat
+        """,
+        encoding="utf-8",
+    )
+
+    captured = {}
+
+    class DummyFeishuClient:
+        def __init__(self, *, app_id: str, app_secret: str):
+            captured["app_id"] = app_id
+            captured["app_secret"] = app_secret
+
+        def send_text(self, *, chat_id: str, text: str) -> str:
+            return "om_test"
+
+    # Mock hermes global config
+    class DummyHermesConfig(dict):
+        def get(self, key, default=None):
+            if key == "tools":
+                return {"playwright_page_capture": {"feishu": {"app_id": "hermes_app", "app_secret": "hermes_secret"}}}
+            return super().get(key, default)
+
+    # Load run_page_capture with fresh modules
+    for mod_name, mod_path in [
+        ("page_capture_models", SCRIPTS_DIR / "page_capture_models.py"),
+        ("page_capture_classify", SCRIPTS_DIR / "page_capture_classify.py"),
+        ("page_capture_config", SCRIPTS_DIR / "page_capture_config.py"),
+        ("page_capture_dom", SCRIPTS_DIR / "page_capture_dom.py"),
+        ("page_capture_feishu", SCRIPTS_DIR / "page_capture_feishu.py"),
+        ("page_capture_probe", SCRIPTS_DIR / "page_capture_probe.py"),
+    ]:
+        spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = module
+        sys.modules[f"scripts.{mod_name}"] = module
+        spec.loader.exec_module(module)
+
+    run_page_capture_spec = importlib.util.spec_from_file_location(
+        "run_page_capture", SCRIPTS_DIR / "run_page_capture.py"
+    )
+    run_page_capture_module = importlib.util.module_from_spec(run_page_capture_spec)
+    run_page_capture_module.__package__ = "scripts"
+    sys.modules["run_page_capture"] = run_page_capture_module
+    run_page_capture_spec.loader.exec_module(run_page_capture_module)
+
+    monkeypatch.setattr(run_page_capture_module, "FeishuAppClient", DummyFeishuClient)
+    # Ensure hermes_cli.config is loaded before patching
+    import hermes_cli.config as hc_config
+    monkeypatch.setattr(hc_config, "load_config", lambda: DummyHermesConfig({
+        "tools": {"playwright_page_capture": {"feishu": {"app_id": "hermes_app", "app_secret": "hermes_secret"}}}
+    }))
+
+    client = run_page_capture_module.build_feishu_client(str(config_path))
+    assert captured == {"app_id": "hermes_app", "app_secret": "hermes_secret"}
+
+
+def test_build_feishu_client_uses_env_vars_when_no_config(monkeypatch, tmp_path: Path) -> None:
+    """Priority 3: falls back to env vars when no config has feishu credentials."""
+    config_path = tmp_path / "page-capture.yaml"
+    config_path.write_text(
+        """
+        pages:
+          - page_id: baidu_poc
+            name: Baidu PoC
+            url: https://www.baidu.com
+            wait_for:
+              load_state: networkidle
+            network_probe:
+              url_keywords: [baidu.com]
+            dom_fields: []
+            feishu_target:
+              chat_id: oc_test_chat
+        """,
+        encoding="utf-8",
+    )
+
+    captured = {}
+
+    class DummyFeishuClient:
+        def __init__(self, *, app_id: str, app_secret: str):
+            captured["app_id"] = app_id
+            captured["app_secret"] = app_secret
+
+        def send_text(self, *, chat_id: str, text: str) -> str:
+            return "om_test"
+
+    class DummyHermesConfig(dict):
+        def get(self, key, default=None):
+            return super().get(key, default)
+
+    for mod_name, mod_path in [
+        ("page_capture_models", SCRIPTS_DIR / "page_capture_models.py"),
+        ("page_capture_classify", SCRIPTS_DIR / "page_capture_classify.py"),
+        ("page_capture_config", SCRIPTS_DIR / "page_capture_config.py"),
+        ("page_capture_dom", SCRIPTS_DIR / "page_capture_dom.py"),
+        ("page_capture_feishu", SCRIPTS_DIR / "page_capture_feishu.py"),
+        ("page_capture_probe", SCRIPTS_DIR / "page_capture_probe.py"),
+    ]:
+        spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = module
+        sys.modules[f"scripts.{mod_name}"] = module
+        spec.loader.exec_module(module)
+
+    run_page_capture_spec = importlib.util.spec_from_file_location(
+        "run_page_capture", SCRIPTS_DIR / "run_page_capture.py"
+    )
+    run_page_capture_module = importlib.util.module_from_spec(run_page_capture_spec)
+    run_page_capture_module.__package__ = "scripts"
+    sys.modules["run_page_capture"] = run_page_capture_module
+    run_page_capture_spec.loader.exec_module(run_page_capture_module)
+
+    monkeypatch.setattr(run_page_capture_module, "FeishuAppClient", DummyFeishuClient)
+    import hermes_cli.config as hc_config
+    monkeypatch.setattr(hc_config, "load_config", lambda: DummyHermesConfig({}))
+    monkeypatch.setenv("FEISHU_APP_ID", "env_app")
+    monkeypatch.setenv("FEISHU_APP_SECRET", "env_secret")
+
+    client = run_page_capture_module.build_feishu_client(str(config_path))
+    assert captured == {"app_id": "env_app", "app_secret": "env_secret"}

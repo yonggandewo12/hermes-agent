@@ -83,10 +83,16 @@ def build_feishu_client(config_path: str):
         )
 
     # Priority 3: env vars
-    return FeishuAppClient(
-        app_id=os.environ["FEISHU_APP_ID"],
-        app_secret=os.environ["FEISHU_APP_SECRET"],
-    )
+    try:
+        return FeishuAppClient(
+            app_id=os.environ["FEISHU_APP_ID"],
+            app_secret=os.environ["FEISHU_APP_SECRET"],
+        )
+    except KeyError as exc:
+        raise RuntimeError(
+            f"Feishu credentials not found. Set FEISHU_APP_ID/FEISHU_APP_SECRET env vars, "
+            f"add feishu config to the page-capture YAML, or run `hermes tools --first-install`."
+        ) from exc
 
 def main() -> int:
     parser = argparse.ArgumentParser()
