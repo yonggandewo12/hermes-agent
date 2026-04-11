@@ -1,7 +1,8 @@
 import sys
 import importlib.util
+from pathlib import Path
 
-SCRIPTS_DIR = "/Users/admin/Documents/project/hermes-agent/.worktrees/playwright-page-capture/optional-skills/communication/playwright-page-capture/scripts"
+SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "optional-skills" / "communication" / "playwright-page-capture" / "scripts"
 
 spec = importlib.util.spec_from_file_location("page_capture_dom", f"{SCRIPTS_DIR}/page_capture_dom.py")
 page_capture_dom = importlib.util.module_from_spec(spec)
@@ -19,13 +20,13 @@ extract_dom_fields = page_capture_dom.extract_dom_fields
 
 
 class DummyNode:
-    def __init__(self, attrs=None):
+    def __init__(self, attrs: dict | None = None) -> None:
         self.attrs = attrs or {}
-    def get_attribute(self, name):
+    def get_attribute(self, name: str) -> str | None:
         return self.attrs.get(name)
 
 class DummyPage:
-    def __init__(self):
+    def __init__(self) -> None:
         self.title_text = "百度一下，你就知道"
         self.nodes = {"input[name='wd']": DummyNode({"name": "wd"})}
     def title(self):
