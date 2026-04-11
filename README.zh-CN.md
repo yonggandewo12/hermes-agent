@@ -133,7 +133,19 @@ Hermes 有两个主要入口：一是直接运行 `hermes` 打开终端 UI；二
 - 提取 DOM 字段
 - 将结果发送到飞书群
 
-手动运行示例：
+**推荐配置路径：**
+
+```bash
+hermes setup
+```
+
+在 tools 阶段启用并配置 Playwright Page Capture。配置会写入：
+
+```bash
+~/.hermes/playwright-page-capture.yaml
+```
+
+**手动运行示例：**
 
 ```bash
 # YAML 模式：使用默认配置路径 ~/.hermes/playwright-page-capture.yaml

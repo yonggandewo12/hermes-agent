@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+import yaml
+
 
 from hermes_cli.config import (
     load_config, save_config, get_env_value, save_env_value,
@@ -25,10 +27,85 @@ from hermes_cli.nous_subscription import (
     get_nous_subscription_features,
 )
 from tools.tool_backend_helpers import managed_nous_tools_enabled
+from hermes_constants import display_hermes_home, get_hermes_home
 
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+
+
+def _playwright_page_capture_config_path() -> Path:
+    return Path.home() / ".hermes" / "playwright-page-capture.yaml"
+
+
+def _load_playwright_page_capture_config() -> dict:
+    path = _playwright_page_capture_config_path()
+    if not path.exists():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def _write_playwright_page_capture_config(*, app_id: str, app_secret: str) -> Path:
+    path = _playwright_page_capture_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    existing = _load_playwright_page_capture_config()
+    feishu = existing.setdefault("feishu", {})
+    feishu["app_id"] = app_id
+    feishu["app_secret"] = app_secret
+    path.write_text(yaml.dump(existing, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    return path
+
+
+def _append_playwright_page_capture_page(*, page_id: str, name: str, url: str, chat_id: str) -> Path:
+    path = _playwright_page_capture_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    existing = _load_playwright_page_capture_config()
+    pages = existing.setdefault("pages", [])
+    pages.append(
+        {
+            "page_id": page_id,
+            "name": name,
+            "url": url,
+            "wait_for": {
+                "load_state": "networkidle",
+            },
+            "feishu_target": {
+                "chat_id": chat_id,
+            },
+        }
+    )
+    path.write_text(yaml.dump(existing, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    return path
+
+
+def _setup_playwright_page_capture() -> Path | None:
+    if _prompt("Configure Playwright Page Capture?", default="n").lower() != "y":
+        return None
+
+    app_id = _prompt("  Feishu App ID")
+    app_secret = _prompt("  Feishu App Secret", password=True)
+    if not app_id or not app_secret:
+        _print_warning("Skipped Playwright Page Capture setup because Feishu credentials were incomplete")
+        return None
+
+    path = _write_playwright_page_capture_config(app_id=app_id, app_secret=app_secret)
+
+    if _prompt("  Create an example page entry?", default="y").lower() == "y":
+        page_id = _prompt("    page_id", default="baidu_poc") or "baidu_poc"
+        name = _prompt("    name", default="百度搜索 PoC") or "百度搜索 PoC"
+        url = _prompt("    url", default="https://www.baidu.com") or "https://www.baidu.com"
+        chat_id = _prompt("    Feishu chat_id")
+        if chat_id:
+            path = _append_playwright_page_capture_page(
+                page_id=page_id,
+                name=name,
+                url=url,
+                chat_id=chat_id,
+            )
+
+    _print_success(f"Saved Playwright Page Capture config to {path}")
+    print("Run with: hermes -q \"使用 playwright-page-capture 处理 page_id=baidu_poc\"")
+    return path
 
 
 # ─── UI Helpers (shared with setup.py) ────────────────────────────────────────
@@ -1398,16 +1475,7 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
             print()
 
         # Prompt for Playwright Page Capture Feishu credentials (once, after all platforms)
-        if _prompt("Configure Playwright Page Capture Feishu credentials?", default="n").lower() == "y":
-            app_id = _prompt("  Feishu App ID")
-            app_secret = _prompt("  Feishu App Secret", password=True)
-            if app_id and app_secret:
-                config.setdefault("tools", {}).setdefault("playwright_page_capture", {})["feishu"] = {
-                    "app_id": app_id,
-                    "app_secret": app_secret,
-                }
-                save_config(config)
-                _print_success("Saved Playwright Page Capture Feishu credentials")
+        _setup_playwright_page_capture()
 
         return
 

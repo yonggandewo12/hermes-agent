@@ -118,7 +118,7 @@ All documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes
 
 ---
 
-### Playwright Page Capture Skill Example
+### Playwright Page Capture Skill
 
 A page capture workflow can:
 - open a fixed page with Playwright
@@ -126,7 +126,19 @@ A page capture workflow can:
 - extract DOM fields
 - send results to a Feishu group
 
-Manual run example:
+**Recommended setup path:**
+
+```bash
+hermes setup
+```
+
+Enable and configure Playwright Page Capture during the tools step. Configuration is written to:
+
+```bash
+~/.hermes/playwright-page-capture.yaml
+```
+
+**Manual run example:**
 
 ```bash
 # YAML mode: uses default config ~/.hermes/playwright-page-capture.yaml
