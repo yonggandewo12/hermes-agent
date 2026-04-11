@@ -44,7 +44,12 @@ def run_capture_pipeline(*, config_path: str, page_id: str, feishu_client, brows
     page_def = next(page for page in config.pages if page.page_id == page_id)
     runtime = browser_runner(page_def)
     probe = probe_network_events(runtime["events"], page_def.network_probe.url_keywords)
-    dom_result = extract_dom_fields(runtime["page"], page_def.dom_fields)
+    dom_result = runtime.get("dom_result")
+    if dom_result is None:
+        if runtime["fetch_error"] or runtime["page"] is None:
+            dom_result = type("DomResult", (), {"fields": {}, "missing_fields": []})()
+        else:
+            dom_result = extract_dom_fields(runtime["page"], page_def.dom_fields)
     state = classify_capture_result(
         fetch_error=runtime["fetch_error"],
         missing_fields=dom_result.missing_fields,

@@ -119,8 +119,72 @@ def test_run_capture_pipeline_returns_ok_for_baidu_poc(monkeypatch, tmp_path: Pa
     assert "页面巡检结果" in sent["text"]
 
 
+def test_run_capture_pipeline_skips_dom_extraction_when_fetch_fails(tmp_path: Path) -> None:
+    config_path = tmp_path / "page-capture.yaml"
+    config_path.write_text(
+        """
+        pages:
+          - page_id: baidu_poc
+            name: Baidu PoC
+            url: https://www.baidu.com
+            wait_for:
+              load_state: networkidle
+            network_probe:
+              url_keywords: [baidu.com]
+            dom_fields:
+              - field: page_title
+                kind: title
+            feishu_target:
+              chat_id: oc_test_chat
+        """,
+        encoding="utf-8",
+    )
+
+    for mod_name, mod_path in [
+        ("page_capture_models", SCRIPTS_DIR / "page_capture_models.py"),
+        ("page_capture_classify", SCRIPTS_DIR / "page_capture_classify.py"),
+        ("page_capture_config", SCRIPTS_DIR / "page_capture_config.py"),
+        ("page_capture_dom", SCRIPTS_DIR / "page_capture_dom.py"),
+        ("page_capture_feishu", SCRIPTS_DIR / "page_capture_feishu.py"),
+        ("page_capture_probe", SCRIPTS_DIR / "page_capture_probe.py"),
+    ]:
+        spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = module
+        sys.modules[f"scripts.{mod_name}"] = module
+        spec.loader.exec_module(module)
+
+    run_page_capture_spec = importlib.util.spec_from_file_location(
+        "run_page_capture", SCRIPTS_DIR / "run_page_capture.py"
+    )
+    run_page_capture_module = importlib.util.module_from_spec(run_page_capture_spec)
+    run_page_capture_module.__package__ = "scripts"
+    sys.modules["run_page_capture"] = run_page_capture_module
+    run_page_capture_spec.loader.exec_module(run_page_capture_module)
+
+    class DummyFeishuClient:
+        def send_text(self, *, chat_id: str, text: str) -> str:
+            assert chat_id == "oc_test_chat"
+            assert "fetch_failed" in text
+            return "om_failed"
+
+    result = run_page_capture_module.run_capture_pipeline(
+        config_path=str(config_path),
+        page_id="baidu_poc",
+        feishu_client=DummyFeishuClient(),
+        browser_runner=lambda definition: {
+            "page": None,
+            "events": [],
+            "fetch_error": "timeout",
+            "login_required": False,
+        },
+    )
+
+    assert result["state"] == "fetch_failed"
+    assert result["message_id"] == "om_failed"
+
+
 def test_normalize_runtime_result_returns_fetch_failed_on_navigation_error() -> None:
-    # Load page_capture_browser module
     browser_spec = importlib.util.spec_from_file_location(
         "page_capture_browser", SCRIPTS_DIR / "page_capture_browser.py"
     )

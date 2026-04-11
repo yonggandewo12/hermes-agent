@@ -8,17 +8,23 @@ def build_browser_launch_options(storage_state_path: str | None) -> dict[str, ob
     }
 
 
-def normalize_runtime_result(*, page, events, fetch_error: str | None, login_required: bool) -> dict[str, object]:
+def normalize_runtime_result(*, page, events, fetch_error: str | None, login_required: bool, dom_result=None) -> dict[str, object]:
     return {
         "page": page,
         "events": events,
         "fetch_error": fetch_error,
         "login_required": login_required,
+        "dom_result": dom_result,
     }
 
 
 def run_browser_capture(page_def):
     from playwright.sync_api import sync_playwright
+
+    try:
+        from .page_capture_dom import extract_dom_fields
+    except ImportError:
+        from page_capture_dom import extract_dom_fields
 
     events: list[dict[str, object]] = []
     with sync_playwright() as playwright:
