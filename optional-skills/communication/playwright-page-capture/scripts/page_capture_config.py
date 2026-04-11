@@ -1,14 +1,27 @@
 from __future__ import annotations
+
 from pathlib import Path
+
 import yaml
-from page_capture_models import (
-    DomFieldRule,
-    FeishuTarget,
-    NetworkProbeConfig,
-    PageCaptureConfig,
-    PageCaptureDefinition,
-    WaitForConfig,
-)
+
+try:
+    from .page_capture_models import (
+        DomFieldRule,
+        FeishuTarget,
+        NetworkProbeConfig,
+        PageCaptureConfig,
+        PageCaptureDefinition,
+        WaitForConfig,
+    )
+except ImportError:
+    from page_capture_models import (
+        DomFieldRule,
+        FeishuTarget,
+        NetworkProbeConfig,
+        PageCaptureConfig,
+        PageCaptureDefinition,
+        WaitForConfig,
+    )
 
 
 def load_page_capture_config(path: str | Path) -> PageCaptureConfig:

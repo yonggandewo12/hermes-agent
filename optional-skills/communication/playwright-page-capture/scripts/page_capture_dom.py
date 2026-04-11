@@ -1,5 +1,9 @@
 from __future__ import annotations
-from page_capture_models import DomExtractionResult, DomFieldRule
+
+try:
+    from .page_capture_models import DomExtractionResult, DomFieldRule
+except ImportError:
+    from page_capture_models import DomExtractionResult, DomFieldRule
 
 def extract_dom_fields(page, rules: list[DomFieldRule]) -> DomExtractionResult:
     fields: dict[str, str] = {}

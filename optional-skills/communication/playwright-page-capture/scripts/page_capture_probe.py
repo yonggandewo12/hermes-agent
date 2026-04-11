@@ -1,5 +1,9 @@
 from __future__ import annotations
-from page_capture_models import NetworkProbeResult
+
+try:
+    from .page_capture_models import NetworkProbeResult
+except ImportError:
+    from page_capture_models import NetworkProbeResult
 
 
 def probe_network_events(events: list[dict[str, object]], url_keywords: list[str]) -> NetworkProbeResult:

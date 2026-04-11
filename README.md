@@ -118,7 +118,7 @@ All documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes
 
 ---
 
-### Playwright Page Capture Skill
+### Playwright Page Capture Skill Example
 
 A page capture workflow can:
 - open a fixed page with Playwright
@@ -128,7 +128,9 @@ A page capture workflow can:
 
 Manual run example:
 
-hermes -q "使用 playwright-page-capture 处理 page_id=baidu_poc config=/abs/path/page-capture.yaml"
+```bash
+hermes -q "Use playwright-page-capture for page_id=baidu_poc config=/abs/path/page-capture.yaml"
+```
 
 ---
 

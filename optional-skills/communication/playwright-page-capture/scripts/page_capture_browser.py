@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from playwright.sync_api import sync_playwright
-
 
 def build_browser_launch_options(storage_state_path: str | None) -> dict[str, object]:
     return {
@@ -20,6 +18,8 @@ def normalize_runtime_result(*, page, events, fetch_error: str | None, login_req
 
 
 def run_browser_capture(page_def):
+    from playwright.sync_api import sync_playwright
+
     events: list[dict[str, object]] = []
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)

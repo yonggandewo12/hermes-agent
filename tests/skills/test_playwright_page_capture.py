@@ -3,8 +3,9 @@ import sys
 import importlib.util
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = (
-    Path(__file__).resolve().parents[2]
+    REPO_ROOT
     / "optional-skills"
     / "communication"
     / "playwright-page-capture"
@@ -14,7 +15,7 @@ sys.path.insert(0, SCRIPTS_DIR)
 
 
 def test_playwright_page_capture_skill_scaffold_exists() -> None:
-    root = Path("optional-skills/communication/playwright-page-capture")
+    root = REPO_ROOT / "optional-skills" / "communication" / "playwright-page-capture"
     assert (root / "SKILL.md").exists()
     assert (root / "scripts" / "run_page_capture.py").exists()
 
