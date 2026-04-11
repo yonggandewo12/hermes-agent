@@ -7,6 +7,7 @@ import yaml
 try:
     from .page_capture_models import (
         DomFieldRule,
+        FeishuAppConfig,
         FeishuTarget,
         NetworkProbeConfig,
         PageCaptureConfig,
@@ -16,6 +17,7 @@ try:
 except ImportError:
     from page_capture_models import (
         DomFieldRule,
+        FeishuAppConfig,
         FeishuTarget,
         NetworkProbeConfig,
         PageCaptureConfig,
@@ -40,4 +42,8 @@ def load_page_capture_config(path: str | Path) -> PageCaptureConfig:
                 storage_state_path=item.get("storage_state_path"),
             )
         )
-    return PageCaptureConfig(pages=pages)
+    feishu = raw.get("feishu")
+    return PageCaptureConfig(
+        pages=pages,
+        feishu=FeishuAppConfig(**feishu) if feishu else None,
+    )

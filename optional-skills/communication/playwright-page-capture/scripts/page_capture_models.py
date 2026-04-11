@@ -28,6 +28,12 @@ class FeishuTarget:
 
 
 @dataclass
+class FeishuAppConfig:
+    app_id: str
+    app_secret: str
+
+
+@dataclass
 class PageCaptureDefinition:
     page_id: str
     name: str
@@ -42,6 +48,7 @@ class PageCaptureDefinition:
 @dataclass
 class PageCaptureConfig:
     pages: list[PageCaptureDefinition]
+    feishu: FeishuAppConfig | None = None
 
 
 @dataclass

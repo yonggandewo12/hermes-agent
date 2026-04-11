@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+from hermes_cli.config import load_config
+
 from hermes_cli.tools_config import (
     _configure_provider,
     _get_platform_tools,
@@ -12,6 +14,24 @@ from hermes_cli.tools_config import (
     _visible_providers,
     tools_command,
 )
+
+
+def test_tools_command_first_install_can_store_page_capture_feishu_config(tmp_path, monkeypatch):
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    config = load_config()
+
+    monkeypatch.setattr("hermes_cli.tools_config._get_enabled_platforms", lambda: ["cli"])
+    monkeypatch.setattr("hermes_cli.tools_config._get_platform_tools", lambda *args, **kwargs: set())
+    monkeypatch.setattr("hermes_cli.tools_config._prompt_toolset_checklist", lambda *args, **kwargs: set())
+    monkeypatch.setattr("hermes_cli.tools_config.apply_nous_managed_defaults", lambda *args, **kwargs: set())
+
+    prompts = iter(["y", "cli_app_id", "cli_app_secret"])
+    monkeypatch.setattr("hermes_cli.tools_config._prompt", lambda *args, **kwargs: next(prompts))
+
+    tools_command(first_install=True, config=config)
+
+    assert config["tools"]["playwright_page_capture"]["feishu"]["app_id"] == "cli_app_id"
+    assert config["tools"]["playwright_page_capture"]["feishu"]["app_secret"] == "cli_app_secret"
 
 
 def test_get_platform_tools_uses_default_when_platform_not_configured():
@@ -372,6 +392,8 @@ def test_first_install_nous_auto_configures_managed_defaults(monkeypatch):
         "hermes_cli.tools_config._configure_toolset",
         lambda ts_key, config: configured.append(ts_key),
     )
+    # Skip Feishu config prompt (default "n")
+    monkeypatch.setattr("hermes_cli.tools_config._prompt", lambda *args, **kwargs: "n")
 
     tools_command(first_install=True, config=config)
 

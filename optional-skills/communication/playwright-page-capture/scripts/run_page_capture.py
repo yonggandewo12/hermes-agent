@@ -62,15 +62,38 @@ def run_capture_pipeline(*, config_path: str, page_id: str, feishu_client, brows
     message_id = feishu_client.send_text(chat_id=page_def.feishu_target.chat_id, text=text)
     return {"state": state, "message_id": message_id}
 
+def build_feishu_client(config_path: str):
+    config = load_page_capture_config(config_path)
+
+    # Priority 1: page-capture config top-level feishu
+    if config.feishu:
+        return FeishuAppClient(
+            app_id=config.feishu.app_id,
+            app_secret=config.feishu.app_secret,
+        )
+
+    # Priority 2: Hermes global config
+    from hermes_cli.config import load_config
+    hermes_config = load_config()
+    feishu_in_hermes = hermes_config.get("tools", {}).get("playwright_page_capture", {}).get("feishu", {})
+    if feishu_in_hermes.get("app_id") and feishu_in_hermes.get("app_secret"):
+        return FeishuAppClient(
+            app_id=feishu_in_hermes["app_id"],
+            app_secret=feishu_in_hermes["app_secret"],
+        )
+
+    # Priority 3: env vars
+    return FeishuAppClient(
+        app_id=os.environ["FEISHU_APP_ID"],
+        app_secret=os.environ["FEISHU_APP_SECRET"],
+    )
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--page-id", required=True)
     args = parser.parse_args()
-    client = FeishuAppClient(
-        app_id=os.environ["FEISHU_APP_ID"],
-        app_secret=os.environ["FEISHU_APP_SECRET"],
-    )
+    client = build_feishu_client(args.config)
     from page_capture_browser import run_browser_capture
     result = run_capture_pipeline(
         config_path=args.config,

@@ -1392,6 +1392,18 @@ def tools_command(args=None, first_install: bool = False, config: dict = None):
                 for ts_key in to_configure:
                     _configure_toolset(ts_key, config)
 
+            # Prompt for Playwright Page Capture Feishu credentials
+            if _prompt("Configure Playwright Page Capture Feishu credentials?", default="n").lower() == "y":
+                app_id = _prompt("  Feishu App ID")
+                app_secret = _prompt("  Feishu App Secret", password=True)
+                if app_id and app_secret:
+                    config.setdefault("tools", {}).setdefault("playwright_page_capture", {})["feishu"] = {
+                        "app_id": app_id,
+                        "app_secret": app_secret,
+                    }
+                    save_config(config)
+                    _print_success("Saved Playwright Page Capture Feishu credentials")
+
             _save_platform_tools(config, pkey, new_enabled)
             save_config(config)
             print(color(f"  ✓ Saved {pinfo['label']} tool configuration", Colors.GREEN))
