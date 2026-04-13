@@ -15,6 +15,9 @@ def extract_dom_fields(page, rules: list[DomFieldRule]) -> DomExtractionResult:
         elif rule.selector and rule.attribute:
             node = page.query_selector(rule.selector)
             value = node.get_attribute(rule.attribute) if node else None
+        elif rule.selector and rule.kind == "text":
+            node = page.query_selector(rule.selector)
+            value = node.inner_text() if node else None
         if value:
             fields[rule.field] = value
         elif rule.required:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import yaml
@@ -54,5 +53,4 @@ def load_page_capture_config(path: str | Path) -> PageCaptureConfig:
     return PageCaptureConfig(
         pages=pages,
         feishu=feishu_config,
-        storage_state_path=os.path.expanduser(raw.get("storage_state_path") or ""),
     )

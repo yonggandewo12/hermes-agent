@@ -7,6 +7,9 @@ except ImportError:
 
 
 def probe_network_events(events: list[dict[str, object]], url_keywords: list[str]) -> NetworkProbeResult:
+    if not url_keywords:
+        # Empty url_keywords means probe is disabled; don't penalize.
+        return NetworkProbeResult(hit=True, url=None, status=None)
     for event in events:
         url = str(event.get("url") or "")
         if any(keyword in url for keyword in url_keywords):
