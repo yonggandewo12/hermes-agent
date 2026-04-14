@@ -53,6 +53,7 @@ class FeishuTarget:
 class FeishuAppConfig:
     app_id: str
     app_secret: str
+    base_url: str = "https://open.feishu.cn/open-apis"
 
 
 @dataclass

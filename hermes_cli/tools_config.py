@@ -45,13 +45,17 @@ def _load_playwright_page_capture_config() -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def _write_playwright_page_capture_config(*, app_id: str, app_secret: str) -> Path:
+def _write_playwright_page_capture_config(*, app_id: str, app_secret: str, base_url: str | None = None) -> Path:
     path = _playwright_page_capture_config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = _load_playwright_page_capture_config()
     feishu = existing.setdefault("feishu", {})
     feishu["app_id"] = app_id
     feishu["app_secret"] = app_secret
+    if base_url:
+        feishu["base_url"] = base_url
+    else:
+        feishu.pop("base_url", None)
     path.write_text(yaml.dump(existing, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return path
 
@@ -84,11 +88,12 @@ def _setup_playwright_page_capture() -> Path | None:
 
     app_id = _prompt("  Feishu App ID")
     app_secret = _prompt("  Feishu App Secret", password=True)
+    base_url = _prompt("  API Base URL (private cloud only, leave empty for public Feishu)")
     if not app_id or not app_secret:
         _print_warning("Skipped Playwright Page Capture setup because Feishu credentials were incomplete")
         return None
 
-    path = _write_playwright_page_capture_config(app_id=app_id, app_secret=app_secret)
+    path = _write_playwright_page_capture_config(app_id=app_id, app_secret=app_secret, base_url=base_url or None)
 
     if _prompt("  Create an example page entry?", default="y").lower() == "y":
         page_id = _prompt("    page_id", default="baidu_poc") or "baidu_poc"

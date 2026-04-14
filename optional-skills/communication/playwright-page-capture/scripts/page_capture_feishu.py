@@ -8,7 +8,7 @@ class FeishuAppClient:
     def __init__(self, *, app_id: str, app_secret: str, base_url: str = "https://open.feishu.cn/open-apis"):
         self.app_id = app_id
         self.app_secret = app_secret
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url.rstrip("/") if base_url else "https://open.feishu.cn/open-apis"
 
     def _get_tenant_access_token(self) -> str:
         response = requests.post(

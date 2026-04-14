@@ -125,6 +125,7 @@ def build_feishu_client(config_path: str):
         return FeishuAppClient(
             app_id=config.feishu.app_id,
             app_secret=config.feishu.app_secret,
+            base_url=config.feishu.base_url,
         )
 
     # Priority 2: Hermes global config
@@ -135,6 +136,7 @@ def build_feishu_client(config_path: str):
         return FeishuAppClient(
             app_id=feishu_in_hermes["app_id"],
             app_secret=feishu_in_hermes["app_secret"],
+            base_url=feishu_in_hermes.get("base_url"),
         )
 
     # Priority 3: env vars
@@ -142,6 +144,7 @@ def build_feishu_client(config_path: str):
         return FeishuAppClient(
             app_id=os.environ["FEISHU_APP_ID"],
             app_secret=os.environ["FEISHU_APP_SECRET"],
+            base_url=os.environ.get("FEISHU_BASE_URL"),
         )
     except KeyError as exc:
         raise RuntimeError(
