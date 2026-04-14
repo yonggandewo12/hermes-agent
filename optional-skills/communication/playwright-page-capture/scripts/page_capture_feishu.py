@@ -33,3 +33,32 @@ class FeishuAppClient:
         )
         response.raise_for_status()
         return response.json()["data"]["message_id"]
+
+    def list_chats(self) -> list[dict]:
+        """
+        获取机器人所在的所有群聊列表。
+        返回 list[dict]，每项含 chat_id, name, member_count 等字段。
+        """
+        token = self._get_tenant_access_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        chats = []
+        page_token = None
+
+        while True:
+            params = {"page_size": 50}
+            if page_token:
+                params["page_token"] = page_token
+            response = requests.get(
+                f"{self.base_url}/im/v1/chats",
+                headers=headers,
+                params=params,
+                timeout=15,
+            )
+            response.raise_for_status()
+            data = response.json()
+            chats.extend(data.get("data", {}).get("items", []))
+            page_token = data.get("data", {}).get("page_token")
+            if not page_token:
+                break
+
+        return chats

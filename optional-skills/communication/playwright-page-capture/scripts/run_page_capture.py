@@ -172,9 +172,11 @@ def run_dom_snapshot(url: str, storage_state_path: str | None = None, output_for
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=None)
-    parser.add_argument("--page-id", required=True)
+    parser.add_argument("--page-id")
     parser.add_argument("--feishu-chat-id", default=None,
                         help="飞书群 chat_id，URL 模式（page_id 为 URL 时）必须指定；YAML 模式可覆盖配置文件中的 feishu_target.chat_id")
+    parser.add_argument("--list-feishu-chats", action="store_true",
+                        help="获取机器人所在的所有群聊列表（chat_id + 群名），无需 page_id")
     # DOM snapshot mode — no Feishu required
     parser.add_argument("--dom", action="store_true",
                         help="直接抓取页面 DOM/HTML，不发送飞书。配合 page_id=<url> --dom 使用。")
@@ -188,9 +190,23 @@ def main() -> int:
 
     args = parser.parse_args()
 
+    # List chats mode — no browser needed
+    if args.list_feishu_chats:
+        config_path = args.config or str(_default_config_path())
+        if not Path(config_path).exists():
+            raise FileNotFoundError(
+                f"Config file not found: {config_path}\n"
+                f"Create it at that path, or pass --config /path/to/page-capture.yaml"
+            )
+        client = build_feishu_client(config_path)
+        chats = client.list_chats()
+        for chat in chats:
+            print(f"{chat.get('chat_id', ''):<30} {chat.get('name', ''):<40} 成员:{chat.get('member_count', 0)}")
+        return 0
+
     # DOM snapshot mode — bypass Feishu entirely
     if args.dom:
-        if not _is_url(args.page_id):
+        if not _is_url(args.page_id or ""):
             raise ValueError(
                 f"--dom mode requires a URL in page_id=, got: {args.page_id}\n"
                 "Example: python run_page_capture.py --page-id https://example.com --dom"
@@ -212,6 +228,8 @@ def main() -> int:
         )
 
     client = build_feishu_client(config_path)
+    if not args.page_id:
+        raise ValueError("--page-id is required for Feishu capture mode")
     from page_capture_browser import run_browser_capture
     result = run_capture_pipeline(
         config_path=config_path,
