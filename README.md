@@ -153,6 +153,31 @@ hermes -q "Use playwright-page-capture for page_id=https://www.baidu.com feishu_
 
 > Default config path: `~/.hermes/playwright-page-capture.yaml`
 
+### Playwright Auth Login Skill
+
+Automated username/password login with configurable step flow, saved as Playwright `storage_state`, and optional chaining into page capture.
+
+**Setup:**
+
+```bash
+# Copy the example config
+cp optional-skills/communication/playwright-auth-login/examples/playwright-auth.example.yaml \
+   ~/.hermes/playwright-auth.yaml
+```
+
+**Manual run examples:**
+
+```bash
+# Login only — saves storage_state
+hermes -q "Use playwright-auth-login for site_id=github_com"
+
+# Login then run all linked page captures
+hermes -q "Use playwright-auth-login for site_id=github_com run_linked_pages=true"
+```
+
+> Default auth config path: `~/.hermes/playwright-auth.yaml`
+> Link pages by setting `auth_site_id` in `~/.hermes/playwright-page-capture.yaml`
+
 ---
 
 ## Migrating from OpenClaw

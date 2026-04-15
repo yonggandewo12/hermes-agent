@@ -161,6 +161,31 @@ hermes -q "使用 playwright-page-capture 处理 page_id=https://www.baidu.com f
 > 默认配置文件路径：`~/.hermes/playwright-page-capture.yaml`
 > YAML 模式和 URL 模式都支持 `--feishu-chat-id` 参数覆盖配置文件中的 chat_id
 
+### Playwright Auth Login Skill
+
+自动化用户名/密码登录，支持配置化步骤流，保存 Playwright `storage_state`，可选串联 page capture 抓取关联页面。
+
+**配置步骤：**
+
+```bash
+# 复制示例配置文件
+cp optional-skills/communication/playwright-auth-login/examples/playwright-auth.example.yaml \
+   ~/.hermes/playwright-auth.yaml
+```
+
+**使用示例：**
+
+```bash
+# 仅登录 — 保存 storage_state
+hermes -q "使用 playwright-auth-login 处理 site_id=github_com"
+
+# 登录并触发所有关联页面抓取
+hermes -q "使用 playwright-auth-login 处理 site_id=github_com run_linked_pages=true"
+```
+
+> 默认 auth 配置路径：`~/.hermes/playwright-auth.yaml`
+> 在 `~/.hermes/playwright-page-capture.yaml` 中设置 `auth_site_id` 即可关联页面
+
 ---
 
 ## 从 OpenClaw 迁移
