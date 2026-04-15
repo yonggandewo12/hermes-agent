@@ -1,0 +1,72 @@
+# Playwright Auth Login 配置示例
+#
+# 配置路径: ~/.hermes/playwright-auth.yaml
+#
+# 说明: 每个 site 对应一个登录站点。username 和 password 为明文配置。
+# storage_state_path 支持相对路径（相对于 ~/.hermes/stats/）或绝对路径。
+#
+# 步骤类型:
+#   - fill:         向输入框写入值，selector 必填，value_from 填写 username 或 password
+#   - click:        点击元素，selector 必填
+#   - wait_for_selector: 等待元素出现，selector 必填
+#   - wait_for_url: 等待 URL 变化，url_contains 或 url_not_contains 填写期望或禁止的 URL 片段
+#
+# 登录成功判定:
+#   - url_not_contains: URL 不应包含的片段（留空则只检查 cookie）
+#   - url_contains:      URL 必须包含的片段
+#   - cookie_names:      必须存在的 cookie 名称（子串匹配）
+#   全部条件满足才视为登录成功。
+
+sites:
+  # ── 示例：标准表单登录 ──────────────────────────────────────
+  - site_id: github_com
+    name: GitHub
+    login_url: https://github.com/login
+    username: your_email@example.com
+    password: your_password
+    storage_state_path: github_com.js
+    steps:
+      - action: fill
+        selector: "#login_field"
+        value_from: username
+      - action: fill
+        selector: "#password"
+        value_from: password
+      - action: click
+        selector: "button[type='submit']"
+      - action: wait_for_url
+        url_not_contains: /login
+    success_criteria:
+      url_not_contains:
+        - /login
+        - /sign_in
+      cookie_names:
+        - logged_in
+        - dotcom_user
+
+  # ── 示例：需要等待输入框出现 ─────────────────────────────────
+  - site_id: internal_portal
+    name: Internal Portal
+    login_url: https://portal.example.com
+    username: admin
+    password: secret_password
+    storage_state_path: internal/portal.js
+    steps:
+      - action: wait_for_selector
+        selector: "input[name='username']"
+      - action: fill
+        selector: "input[name='username']"
+        value_from: username
+      - action: fill
+        selector: "input[name='password']"
+        value_from: password
+      - action: click
+        selector: "button[type='submit']"
+      - action: wait_for_url
+        url_not_contains: /login
+    success_criteria:
+      url_not_contains:
+        - /login
+      cookie_names:
+        - session
+        - token

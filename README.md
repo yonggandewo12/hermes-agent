@@ -178,6 +178,19 @@ hermes -q "Use playwright-auth-login for site_id=github_com run_linked_pages=tru
 > Default auth config path: `~/.hermes/playwright-auth.yaml`
 > Link pages by setting `auth_site_id` in `~/.hermes/playwright-page-capture.yaml`
 
+**Page configuration change:**
+
+The `~/.hermes/playwright-page-capture.yaml` page entry now accepts a new optional field `auth_site_id`:
+
+```yaml
+pages:
+  - page_id: github_dashboard
+    auth_site_id: github_com   # ← NEW: links this page to auth site_id
+    url: https://github.com
+    storage_state_path: github_com.js
+    ...
+```
+
 ---
 
 ## Migrating from OpenClaw

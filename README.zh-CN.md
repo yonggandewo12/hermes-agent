@@ -186,6 +186,19 @@ hermes -q "使用 playwright-auth-login 处理 site_id=github_com run_linked_pag
 > 默认 auth 配置路径：`~/.hermes/playwright-auth.yaml`
 > 在 `~/.hermes/playwright-page-capture.yaml` 中设置 `auth_site_id` 即可关联页面
 
+**页面配置变更：**
+
+`~/.hermes/playwright-page-capture.yaml` 的 page 条目新增可选字段 `auth_site_id`：
+
+```yaml
+pages:
+  - page_id: github_dashboard
+    auth_site_id: github_com   # ← 新增：关联到 auth 配置中的 site_id
+    url: https://github.com
+    storage_state_path: github_com.js
+    ...
+```
+
 ---
 
 ## 从 OpenClaw 迁移
