@@ -176,6 +176,26 @@ pages:
 CLI --storage-state > YAML storage_state_path > 无（匿名访问）
 ```
 
+### 与 playwright-auth-login 联动
+
+若页面依赖自动登录站点，可在页面配置中增加 `auth_site_id`：
+
+```yaml
+pages:
+  - page_id: github_dashboard
+    name: GitHub Dashboard
+    url: https://github.com
+    auth_site_id: github_com
+```
+
+然后通过 `playwright-auth-login` 执行登录并触发关联抓取：
+
+```bash
+/playwright-auth-login --site-id github_com --run-linked-pages
+```
+
+`--run-linked-pages` 会自动查找所有 `auth_site_id` 匹配该 site_id 的页面，逐个执行抓取并推送飞书通知。
+
 ---
 
 ## 命令行参数（两种模式通用）
