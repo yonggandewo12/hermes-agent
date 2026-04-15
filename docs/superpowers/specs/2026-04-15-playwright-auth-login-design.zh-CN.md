@@ -1,5 +1,7 @@
 # Playwright Auth Login 串联 Page Capture 方案设计
 
+> **实现状态：已完成** — 对应 commit `1e36bf77`，feature branch `feat/playwright-page-capture`
+
 ## 1. 背景与目标
 
 当前 `playwright-page-capture` 方案对登录态的支持方式是：
