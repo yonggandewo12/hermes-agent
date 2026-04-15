@@ -37,6 +37,16 @@ SKILLS_DIR = HERMES_HOME / "skills"
 MANIFEST_FILE = SKILLS_DIR / ".bundled_manifest"
 
 
+def _get_repo_root() -> Path:
+    """Locate the repo root (parent of tools/)."""
+    return Path(__file__).parent.parent.resolve()
+
+
+def _get_optional_skills_dir() -> Path:
+    """Locate the optional-skills/ directory within the repo."""
+    return _get_repo_root() / "optional-skills"
+
+
 def _get_bundled_dir() -> Path:
     """Locate the bundled skills/ directory.
 
@@ -150,6 +160,51 @@ def _dir_hash(directory: Path) -> str:
     except (OSError, IOError):
         pass
     return hasher.hexdigest()
+
+
+def sync_optional_skills(quiet: bool = False) -> dict:
+    """Sync all skills from optional-skills/ into ~/.hermes/skills/ with force overwrite.
+
+    Unlike bundled skills, optional skills are force-copied every time (not tracked
+    in the manifest). This ensures install scripts always bring optional-skills up to
+    date regardless of prior user modifications.
+
+    Returns:
+        dict with keys: copied (list), skipped (int), total (int)
+    """
+    optional_dir = _get_optional_skills_dir()
+    if not optional_dir.exists():
+        return {"copied": [], "skipped": 0, "total": 0}
+
+    SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+    copied: list[str] = []
+    skipped = 0
+
+    for skill_md in optional_dir.rglob("SKILL.md"):
+        path_str = str(skill_md)
+        if any(part in (".git", ".github", ".hub", "__pycache__") for part in skill_md.parts):
+            continue
+        skill_dir = skill_md.parent
+        # Compute relative path preserving category structure
+        try:
+            rel = skill_dir.relative_to(optional_dir)
+        except ValueError:
+            continue
+        dest = SKILLS_DIR / rel
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.copytree(skill_dir, dest)
+            copied.append(str(rel))
+            if not quiet:
+                print(f"  + {rel}")
+        except (OSError, IOError) as e:
+            if not quiet:
+                print(f"  ! Failed to copy {rel}: {e}")
+            skipped += 1
+
+    return {"copied": copied, "skipped": skipped, "total": len(copied) + skipped}
 
 
 def sync_skills(quiet: bool = False) -> dict:
@@ -281,15 +336,33 @@ def sync_skills(quiet: bool = False) -> dict:
 
 
 if __name__ == "__main__":
-    print("Syncing bundled skills into ~/.hermes/skills/ ...")
-    result = sync_skills(quiet=False)
-    parts = [
-        f"{len(result['copied'])} new",
-        f"{len(result['updated'])} updated",
-        f"{result['skipped']} unchanged",
-    ]
-    if result["user_modified"]:
-        parts.append(f"{len(result['user_modified'])} user-modified (kept)")
-    if result["cleaned"]:
-        parts.append(f"{len(result['cleaned'])} cleaned from manifest")
-    print(f"\nDone: {', '.join(parts)}. {result['total_bundled']} total bundled.")
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Sync skills into ~/.hermes/skills/")
+    parser.add_argument("--optional", action="store_true", help="Sync optional-skills/ only (force overwrite)")
+    args = parser.parse_args()
+
+    if args.optional:
+        print("Syncing optional skills into ~/.hermes/skills/ (force overwrite)...")
+        result = sync_optional_skills(quiet=False)
+        if result["copied"]:
+            print(f"\nDone: {len(result['copied'])} skill(s) synced.")
+        else:
+            print("\nDone: no optional skills found.")
+    else:
+        print("Syncing bundled skills into ~/.hermes/skills/ ...")
+        result = sync_skills(quiet=False)
+        parts = [
+            f"{len(result['copied'])} new",
+            f"{len(result['updated'])} updated",
+            f"{result['skipped']} unchanged",
+        ]
+        if result["user_modified"]:
+            parts.append(f"{len(result['user_modified'])} user-modified (kept)")
+        if result["cleaned"]:
+            parts.append(f"{len(result['cleaned'])} cleaned from manifest")
+        print(f"\nDone: {', '.join(parts)}. {result['total_bundled']} total bundled.")
+        print("Syncing optional skills into ~/.hermes/skills/ (force overwrite)...")
+        opt_result = sync_optional_skills(quiet=False)
+        if opt_result["copied"]:
+            print(f"  -> {len(opt_result['copied'])} optional skill(s) synced.")

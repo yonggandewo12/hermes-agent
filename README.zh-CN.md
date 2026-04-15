@@ -165,6 +165,12 @@ hermes -q "使用 playwright-page-capture 处理 page_id=https://www.baidu.com f
 
 自动化用户名/密码登录，支持配置化步骤流，保存 Playwright `storage_state`，可选串联 page capture 抓取关联页面。
 
+**安装：**
+
+```bash
+hermes skills install official/communication/playwright-auth-login
+```
+
 **配置步骤：**
 
 ```bash

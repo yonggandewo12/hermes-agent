@@ -157,6 +157,12 @@ hermes -q "Use playwright-page-capture for page_id=https://www.baidu.com feishu_
 
 Automated username/password login with configurable step flow, saved as Playwright `storage_state`, and optional chaining into page capture.
 
+**Install:**
+
+```bash
+hermes skills install official/communication/playwright-auth-login
+```
+
 **Setup:**
 
 ```bash
