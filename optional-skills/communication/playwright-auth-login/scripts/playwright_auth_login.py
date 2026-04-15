@@ -14,14 +14,8 @@ CAPTURE_SCRIPTS_DIR = SCRIPTS_DIR.parent.parent / "playwright-page-capture" / "s
 if str(CAPTURE_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(CAPTURE_SCRIPTS_DIR))
 
-try:
-    from playwright_auth_config import load_playwright_auth_config
-    from playwright_auth_models import PlaywrightAuthConfig, AuthSiteDefinition
-    from playwright_auth_runner import run_auth_flow
-except ImportError:
-    from playwright_auth_config import load_playwright_auth_config
-    from playwright_auth_models import PlaywrightAuthConfig, AuthSiteDefinition
-    from playwright_auth_runner import run_auth_flow
+from playwright_auth_config import load_playwright_auth_config
+from playwright_auth_runner import run_auth_flow
 
 
 def _default_auth_config_path() -> Path:

@@ -103,5 +103,5 @@ pages:
 # 在 ~/.hermes/playwright-page-capture.yaml 中设置 auth_site_id: github_com
 
 # 4. 定时巡检
-/capture-auth-login --site-id github_com --run-linked-pages
+/playwright-auth-login --site-id github_com --run-linked-pages
 ```
