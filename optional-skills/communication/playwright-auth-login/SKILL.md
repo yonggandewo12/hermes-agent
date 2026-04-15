@@ -90,18 +90,37 @@ pages:
 | `feishu/oc_xxx.js` | `~/.hermes/stats/feishu/oc_xxx.js` |
 | `/tmp/login.json` | `/tmp/login.json`（绝对路径直接用） |
 
+## 登录状态返回
+
+| 状态 | 含义 |
+|------|------|
+| `success` | 登录成功，storage_state 已保存 |
+| `login_failed` | 步骤执行完但未满足 success_criteria |
+| `step_failed` | 执行某一步时失败，如 selector 找不到 |
+| `config_error` | site_id 不存在或配置缺失 |
+
 ## 完整使用链
 
 ```bash
-# 1. 首次登录（保存 storage_state）
+# 1. 配置 auth YAML
+# 将示例文件复制到配置路径：
+cp optional-skills/communication/playwright-auth-login/examples/playwright-auth.example.yaml \
+   ~/.hermes/playwright-auth.yaml
+
+# 2. 首次登录（保存 storage_state）
 /playwright-auth-login --site-id github_com
 
-# 2. 登录并触发关联页面抓取
+# 3. 在 page-capture.yaml 中关联页面
+# 设置 auth_site_id: github_com
+
+# 4. 登录并触发关联页面抓取
 /playwright-auth-login --site-id github_com --run-linked-pages
 
-# 3. 配置 YAML 页面关联
-# 在 ~/.hermes/playwright-page-capture.yaml 中设置 auth_site_id: github_com
-
-# 4. 定时巡检
-/playwright-auth-login --site-id github_com --run-linked-pages
+# 5. 定时巡检（cron）
+hermes -q "/cron add /playwright-auth-login --site-id github_com --run-linked-pages"
 ```
+
+## 依赖与前置条件
+
+- `playwright`（会自动提示安装 Chromium）
+- `--run-linked-pages` 依赖飞书凭证：可通过 `~/.hermes/playwright-page-capture.yaml` 的 `feishu:` 字段、环境变量 `FEISHU_APP_ID` + `FEISHU_APP_SECRET`，或 Hermes 全局配置提供
