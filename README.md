@@ -170,9 +170,11 @@ cp optional-skills/communication/playwright-auth-login/examples/playwright-auth.
 ```bash
 # Login only — saves storage_state
 hermes -q "Use playwright-auth-login for site_id=github_com"
+/playwright-auth-login site_id=github_com
 
 # Login then run all linked page captures
 hermes -q "Use playwright-auth-login for site_id=github_com run_linked_pages=true"
+/playwright-auth-login site_id=github_com --run-linked-pages
 ```
 
 > Default auth config path: `~/.hermes/playwright-auth.yaml`

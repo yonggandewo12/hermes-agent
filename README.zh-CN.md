@@ -178,9 +178,11 @@ cp optional-skills/communication/playwright-auth-login/examples/playwright-auth.
 ```bash
 # 仅登录 — 保存 storage_state
 hermes -q "使用 playwright-auth-login 处理 site_id=github_com"
+/playwright-auth-login site_id=github_com
 
 # 登录并触发所有关联页面抓取
 hermes -q "使用 playwright-auth-login 处理 site_id=github_com run_linked_pages=true"
+/playwright-auth-login site_id=github_com --run-linked-pages
 ```
 
 > 默认 auth 配置路径：`~/.hermes/playwright-auth.yaml`
