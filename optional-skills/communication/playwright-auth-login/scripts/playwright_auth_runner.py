@@ -17,6 +17,7 @@ def _step_value(site: AuthSiteDefinition, value_from: str | None) -> str:
 
 
 def _run_step(page, site: AuthSiteDefinition, step: AuthStep) -> None:
+    # Supported actions: fill, click, press, wait_for_selector, wait_for_url
     if step.action == "fill":
         page.fill(step.selector, _step_value(site, step.value_from))
         return
@@ -25,6 +26,9 @@ def _run_step(page, site: AuthSiteDefinition, step: AuthStep) -> None:
         return
     if step.action == "wait_for_selector":
         page.wait_for_selector(step.selector)
+        return
+    if step.action == "press":
+        page.press(step.selector or "body", step.value_from or "Enter")
         return
     if step.action == "wait_for_url":
         if step.url_contains:

@@ -210,6 +210,26 @@ pages:
 | `--format html\|json` | `--dom` 模式输出格式 |
 | `--config <path>` | 手动指定配置文件，默认 `~/.hermes/playwright-page-capture.yaml` |
 
+### 飞书消息格式
+
+状态为 `ok` 时，飞书消息包含所有提取的 `dom_fields`（除 `page_title` 外），示例：
+
+```
+【页面巡检结果】
+页面：和风搜天气
+状态：ok
+页面标题：和风天气控制台
+
+available_quota：可用配额
+available_quota_value：xxx 次
+
+网络探测：命中
+网络状态码：200
+结论：页面加载正常
+```
+
+因此配置 `dom_fields` 时将 `field` 设为中文名称，推送消息即可直接展示。
+
 ---
 
 ## 使用场景速查

@@ -27,9 +27,16 @@ def _build_message(page_name: str, state: str, fields: dict[str, str], probe) ->
     if state == "ok":
         title = fields.get("page_title", "")
         title_line = f"页面标题：{title}\n" if title else ""
+        # Include all other extracted fields (excluding meta fields)
+        meta_fields = {"page_title", "_missing_fields"}
+        extra_lines = []
+        for k, v in fields.items():
+            if k not in meta_fields and v:
+                extra_lines.append(f"{k}：{v}")
+        extra_section = ("\n" + "\n".join(extra_lines) + "\n") if extra_lines else ""
         return (
             f"【页面巡检结果】\n页面：{page_name}\n状态：ok\n"
-            f"{title_line}"
+            f"{title_line}{extra_section}"
             f"网络探测：{'命中' if probe.hit else '未命中'}\n"
             f"网络状态码：{probe.status if probe.status is not None else ''}\n"
             "结论：页面加载正常"

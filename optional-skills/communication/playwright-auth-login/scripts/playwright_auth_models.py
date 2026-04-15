@@ -13,6 +13,7 @@ def resolve_auth_storage_state_path(storage_state_path: str) -> str:
 
 @dataclass
 class AuthStep:
+    """Supported actions: fill, click, press, wait_for_selector, wait_for_url."""
     action: str
     selector: str | None = None
     value_from: str | None = None

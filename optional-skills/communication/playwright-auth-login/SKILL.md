@@ -34,6 +34,16 @@ metadata:
 | `--config` | 手动指定 auth 配置文件，默认 `~/.hermes/playwright-auth.yaml` |
 | `--capture-config` | 指定 page-capture 配置文件（配合 `--run-linked-pages` 使用） |
 
+## 支持的 steps actions
+
+| action | selector | value_from | 说明 |
+|--------|----------|------------|------|
+| `fill` | CSS 选择器 | `username` / `password` | 填入凭据 |
+| `click` | CSS 选择器 | - | 点击元素 |
+| `press` | CSS 选择器 | `Enter` 等键名 | 对元素按键盘键（无 selector 时默认 `body`） |
+| `wait_for_selector` | CSS 选择器 | - | 等待元素出现 |
+| `wait_for_url` | - | - | 等待 URL 条件，参数 `url_contains` 或 `url_not_contains` |
+
 ## YAML 配置示例
 
 ```yaml
@@ -61,6 +71,23 @@ sites:
         - /sign_in
       cookie_names:
         - logged_in
+```
+
+**注意**：SPA（单页应用）站点可能没有 `button[type='submit']`，改用 `press` + `Enter` 更可靠：
+
+```yaml
+    steps:
+      - action: fill
+        selector: "input[placeholder='Email/phone']"
+        value_from: username
+      - action: fill
+        selector: "input[placeholder='Password']"
+        value_from: password
+      - action: press
+        selector: "input[placeholder='Password']"
+        value_from: Enter
+      - action: wait_for_url
+        url_not_contains: /login
 ```
 
 ## auth_site_id 关联机制

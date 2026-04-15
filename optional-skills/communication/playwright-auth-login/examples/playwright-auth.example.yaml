@@ -2,14 +2,15 @@
 #
 # 配置路径: ~/.hermes/playwright-auth.yaml
 #
-# 说明: 每个 site 对应一个登录站点。username 和 password 为明文配置。
+# 说明: 每个 site 对应一个登录站点。username 和 password 为顶层字段。
 # storage_state_path 支持相对路径（相对于 ~/.hermes/stats/）或绝对路径。
 #
 # 步骤类型:
-#   - fill:         向输入框写入值，selector 必填，value_from 填写 username 或 password
-#   - click:        点击元素，selector 必填
+#   - fill:              向输入框写入值，selector 必填，value_from 填写 username 或 password
+#   - click:             点击元素，selector 必填
+#   - press:             按键盘键，selector 可选（默认 body），value_from 填写键名（如 Enter）
 #   - wait_for_selector: 等待元素出现，selector 必填
-#   - wait_for_url: 等待 URL 变化，url_contains 或 url_not_contains 填写期望或禁止的 URL 片段
+#   - wait_for_url:      等待 URL 变化，url_contains 或 url_not_contains 填写期望或禁止的 URL 片段
 #
 # 登录成功判定:
 #   - url_not_contains: URL 不应包含的片段（留空则只检查 cookie）
@@ -43,6 +44,33 @@ sites:
       cookie_names:
         - logged_in
         - dotcom_user
+
+  # ── 示例：SPA 站点的 placeholder 输入框 + press Enter ────────
+  # 适用于没有显式 submit 按钮的单页应用（如和风天气）
+  - site_id: weather
+    name: 和风天气
+    login_url: https://id.qweather.com/#/login
+    username: your_phone_or_email
+    password: your_password
+    storage_state_path: weather.js
+    steps:
+      - action: fill
+        selector: "input[placeholder='Email/phone']"
+        value_from: username
+      - action: fill
+        selector: "input[placeholder='Password']"
+        value_from: password
+      - action: press
+        selector: "input[placeholder='Password']"
+        value_from: Enter
+      - action: wait_for_url
+        url_not_contains: /login
+    success_criteria:
+      url_not_contains:
+        - /login
+      cookie_names:
+        - session
+        - token
 
   # ── 示例：需要等待输入框出现 ─────────────────────────────────
   - site_id: internal_portal
