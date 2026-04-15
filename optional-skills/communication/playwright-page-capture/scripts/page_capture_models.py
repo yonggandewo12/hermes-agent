@@ -66,6 +66,7 @@ class PageCaptureDefinition:
     dom_fields: list[DomFieldRule]
     feishu_target: FeishuTarget
     storage_state_path: str | None = None
+    auth_site_id: str | None = None
 
 
 @dataclass

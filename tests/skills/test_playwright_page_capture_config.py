@@ -176,6 +176,32 @@ def test_setup_playwright_page_capture_prompts_for_example_page(monkeypatch, tmp
     assert loaded["pages"][0]["name"] == "百度搜索 PoC"
 
 
+def test_load_page_capture_config_reads_auth_site_id(tmp_path: Path):
+    config_path = tmp_path / "page-capture.yaml"
+    config_path.write_text(
+        """
+        pages:
+          - page_id: dashboard_main
+            name: Dashboard Main
+            url: https://example.com/dashboard
+            auth_site_id: feishu_admin
+            wait_for:
+              load_state: networkidle
+            network_probe:
+              url_keywords: [example.com]
+            dom_fields: []
+            feishu_target:
+              chat_id: oc_test_chat
+        """,
+        encoding="utf-8",
+    )
+
+    module = load_module()
+    config = module.load_page_capture_config(config_path)
+
+    assert config.pages[0].auth_site_id == "feishu_admin"
+
+
 def test_setup_playwright_page_capture_updates_feishu_without_removing_existing_pages(monkeypatch, tmp_path):
     target = tmp_path / "playwright-page-capture.yaml"
     target.write_text(

@@ -40,6 +40,7 @@ def load_page_capture_config(path: str | Path) -> PageCaptureConfig:
                 dom_fields=[DomFieldRule(**rule) for rule in item.get("dom_fields", [])],
                 feishu_target=FeishuTarget(**item["feishu_target"]) if "feishu_target" in item else None,
                 storage_state_path=item.get("storage_state_path"),
+                auth_site_id=item.get("auth_site_id"),
             )
         )
     feishu = raw.get("feishu")
