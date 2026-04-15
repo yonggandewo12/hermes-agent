@@ -117,6 +117,68 @@ def test_summarize_linked_pages_empty_returns_zeros():
     assert summary == {"total": 0, "ok": 0, "failed": 0}
 
 
+def test_main_returns_empty_linked_pages_when_no_matches(tmp_path: Path, monkeypatch, capsys):
+    """When --run-linked-pages is used but no pages match the auth_site_id, capture_summary is zeros."""
+    module = load_auth_login_module()
+
+    # Create auth config with a site
+    auth_config_path = tmp_path / "playwright-auth.yaml"
+    auth_config_path.write_text(
+        """
+        sites:
+          - site_id: feishu_admin
+            name: Feishu Admin
+            login_url: https://example.com/login
+            username: demo_user
+            password: demo_pass
+            storage_state_path: feishu/feishu_admin.js
+            steps: []
+            success_criteria: {}
+        """,
+        encoding="utf-8",
+    )
+
+    # Create capture config with NO matching pages
+    capture_config_path = tmp_path / "playwright-page-capture.yaml"
+    capture_config_path.write_text(
+        """
+        pages:
+          - page_id: unrelated
+            name: Unrelated
+            url: https://other.com
+            wait_for:
+              load_state: networkidle
+            network_probe:
+              url_keywords: []
+            dom_fields: []
+            feishu_target:
+              chat_id: oc_test_chat
+        """,
+        encoding="utf-8",
+    )
+
+    # Monkeypatch to avoid real Playwright and real Feishu
+    monkeypatch.setattr(module, "_default_auth_config_path", lambda: auth_config_path)
+    monkeypatch.setattr(module, "_default_capture_config_path", lambda: capture_config_path)
+    monkeypatch.setattr(module, "run_auth_flow", lambda site: {
+        "status": "success",
+        "site_id": site.site_id,
+        "storage_state_path": "/tmp/feishu_admin.js",
+    })
+    monkeypatch.setattr(module, "run_linked_pages", lambda **kwargs: [])
+    # build_feishu_client is imported inside main() from run_page_capture, so patch it there
+    # Import it first so it's in sys.modules, then monkeypatch
+    import run_page_capture  # noqa: F401 - must import before monkeypatch
+    monkeypatch.setattr(sys.modules["run_page_capture"], "build_feishu_client", lambda config_path: object())
+
+    monkeypatch.setattr(sys, "argv", ["playwright_auth_login.py", "--site-id", "feishu_admin", "--run-linked-pages"])
+    result = module.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["linked_pages"] == []
+    assert payload["capture_summary"] == {"total": 0, "ok": 0, "failed": 0}
+
+
 def test_playwright_auth_login_skill_scaffold_exists() -> None:
     """Skill scaffold: DESCRIPTION.md, SKILL.md, and CLI script must exist."""
     root = REPO_ROOT / "optional-skills" / "communication" / "playwright-auth-login"
