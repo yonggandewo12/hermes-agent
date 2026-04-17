@@ -181,6 +181,20 @@ pages:
 
 **注意**：`load_state` 不要用 `networkidle`，国内站点容易因 CDN/广告请求导致超时，建议用 `load` 或 `domcontentloaded`。实测 `weather-bj` 页面 `networkidle` → 超时 30s；改为 `domcontentloaded` 后正常。
 
+### weather / weather-bj 配置区别（常见踩坑）
+
+| site_id | 用途 | 登录行为 | 结果 |
+|---------|------|---------|------|
+| `weather` | 更新登录凭证 | 完整走登录流程 | `step_failed` 超时（id.qweather.com 加载慢） |
+| `weather-bj` | 跳过登录直接抓取 | auth_skipped，按 page_id 匹配抓取 | `ok` |
+
+**踩坑原因**：传了 `weather`（完整登录配置），但 id.qweather.com 登录页加载超过 30s 限制导致超时。应该用 `weather-bj`（不完整配置，跳过登录，直接用已有 storage_state 抓取）。
+
+如果确实要更新登录凭证：
+1. 先增大 `--goto-timeout`（默认 30000ms）
+2. 或者单独跑一次登录保存凭证（不加 `--run-linked-pages`）
+3. 然后再用 `weather-bj --run-linked-pages` 触发抓取
+
 ## 登录状态返回
 
 | 状态 | 含义 |
@@ -215,7 +229,13 @@ hermes -q "/cron add /playwright-auth-login --site-id github_com --run-linked-pa
 
 如果通过 Hermes CLI 执行，需注意：
 
-1. **venv 中 playwright 未预装**。首次需引导 pip 并安装：
+1. **先确认当前 Hermes 运行环境里已经有 playwright：**
+   ```bash
+   ~/Documents/project/hermes-agent/venv/bin/python3 -c "import playwright"
+   ~/Documents/project/hermes-agent/venv/bin/python3 -m playwright install chromium
+   ```
+
+   如果第一条命令报 `ModuleNotFoundError`，再补装：
    ```bash
    cd ~/Documents/project/hermes-agent
    ./venv/bin/python3 -m ensurepip

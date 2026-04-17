@@ -271,6 +271,7 @@ install_python_deps() {
     log_warn "Full extras install failed, falling back to base install"
     "$UV_CMD" pip install --python "$python_bin" --no-compile .
   fi
+  "$python_bin" -m pip install playwright || log_warn "Python Playwright package install failed"
   log_success "Python package installation complete"
 }
 

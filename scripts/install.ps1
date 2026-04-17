@@ -740,6 +740,13 @@ function Install-NodeDeps {
     }
 
     if (Test-Path "package.json") {
+        $pythonExe = if ($NoVenv) { "python" } else { "$InstallDir\venv\Scripts\python.exe" }
+        try {
+            & $pythonExe -m pip install playwright 2>&1 | Out-Null
+        } catch {
+            Write-Warn "Python Playwright package install failed"
+        }
+
         Write-Info "Installing Playwright Chromium browser..."
         try {
             npx playwright install chromium 2>&1 | Out-Null

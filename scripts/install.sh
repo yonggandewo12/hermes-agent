@@ -1079,7 +1079,7 @@ install_node_deps() {
         # Faster npm flags: skip audit/fund checks, prefer cached packages
         local npm_flags="--silent --no-audit --no-fund --prefer-offline"
 
-        log_info "Installing Node.js dependencies and browser engine (parallel)..."
+        log_info "Installing Node.js dependencies..."
         install_repo_deps() {
             cd "$INSTALL_DIR"
             npm install $npm_flags 2>/dev/null || {
@@ -1110,9 +1110,12 @@ install_node_deps() {
             esac
         }
 
-        install_repo_deps &
-        install_playwright &
-        wait
+        install_repo_deps
+        if [ "$USE_VENV" = true ] && [ -x "$INSTALL_DIR/venv/bin/python" ]; then
+            "$INSTALL_DIR/venv/bin/python" -m pip install playwright 2>/dev/null || true
+        fi
+        log_info "Installing Playwright Chromium browser..."
+        install_playwright
         log_success "Node.js dependencies and browser engine installed"
     fi
 

@@ -157,6 +157,7 @@ function Install-PythonDeps {
         Write-Warn 'Full extras install failed, falling back to base install'
         & $UvCmd pip install --no-compile '.'
     }
+    try { & $UvCmd pip install playwright | Out-Null } catch { Write-Warn 'Python Playwright package install failed' }
     Pop-Location
     Write-Success 'Python package installation complete'
 }
