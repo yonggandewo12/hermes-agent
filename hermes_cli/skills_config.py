@@ -21,8 +21,6 @@ PLATFORMS = {
     "telegram": "📱 Telegram",
     "discord":  "💬 Discord",
     "slack":    "💼 Slack",
-    "whatsapp": "📱 WhatsApp",
-    "signal":   "📡 Signal",
     "bluebubbles": "💬 BlueBubbles",
     "email":    "📧 Email",
     "homeassistant": "🏠 Home Assistant",

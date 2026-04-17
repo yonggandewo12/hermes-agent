@@ -65,7 +65,7 @@ SEND_MESSAGE_SCHEMA = {
             },
             "target": {
                 "type": "string",
-                "description": "Delivery target. Format: 'platform' (uses home channel), 'platform:#channel-name', 'platform:chat_id', or Telegram topic 'telegram:chat_id:thread_id'. Examples: 'telegram', 'telegram:-1001234567890:17585', 'discord:#bot-home', 'slack:#engineering', 'signal:+15551234567'"
+                "description": "Delivery target. Format: 'platform' (uses home channel), 'platform:#channel-name', 'platform:chat_id', or Telegram topic 'telegram:chat_id:thread_id'. Examples: 'telegram', 'telegram:-1001234567890:17585', 'discord:#bot-home', 'slack:#engineering'"
             },
             "message": {
                 "type": "string",
@@ -146,8 +146,6 @@ def _handle_send(args):
         "telegram": Platform.TELEGRAM,
         "discord": Platform.DISCORD,
         "slack": Platform.SLACK,
-        "whatsapp": Platform.WHATSAPP,
-        "signal": Platform.SIGNAL,
         "bluebubbles": Platform.BLUEBUBBLES,
         "matrix": Platform.MATRIX,
         "mattermost": Platform.MATTERMOST,
@@ -156,7 +154,6 @@ def _handle_send(args):
         "feishu": Platform.FEISHU,
         "wecom": Platform.WECOM,
         "email": Platform.EMAIL,
-        "sms": Platform.SMS,
     }
     platform = platform_map.get(platform_name)
     if not platform:
@@ -384,14 +381,8 @@ async def _send_to_platform(platform, pconfig, chat_id, message, thread_id=None,
             result = await _send_discord(pconfig.token, chat_id, chunk)
         elif platform == Platform.SLACK:
             result = await _send_slack(pconfig.token, chat_id, chunk)
-        elif platform == Platform.WHATSAPP:
-            result = await _send_whatsapp(pconfig.extra, chat_id, chunk)
-        elif platform == Platform.SIGNAL:
-            result = await _send_signal(pconfig.extra, chat_id, chunk)
         elif platform == Platform.EMAIL:
             result = await _send_email(pconfig.extra, chat_id, chunk)
-        elif platform == Platform.SMS:
-            result = await _send_sms(pconfig.api_key, chat_id, chunk)
         elif platform == Platform.MATTERMOST:
             result = await _send_mattermost(pconfig.token, pconfig.extra, chat_id, chunk)
         elif platform == Platform.MATRIX:
@@ -594,70 +585,6 @@ async def _send_slack(token, chat_id, message):
         return _error(f"Slack send failed: {e}")
 
 
-async def _send_whatsapp(extra, chat_id, message):
-    """Send via the local WhatsApp bridge HTTP API."""
-    try:
-        import aiohttp
-    except ImportError:
-        return {"error": "aiohttp not installed. Run: pip install aiohttp"}
-    try:
-        bridge_port = extra.get("bridge_port", 3000)
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"http://localhost:{bridge_port}/send",
-                json={"chatId": chat_id, "message": message},
-                timeout=aiohttp.ClientTimeout(total=30),
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return {
-                        "success": True,
-                        "platform": "whatsapp",
-                        "chat_id": chat_id,
-                        "message_id": data.get("messageId"),
-                    }
-                body = await resp.text()
-                return _error(f"WhatsApp bridge error ({resp.status}): {body}")
-    except Exception as e:
-        return _error(f"WhatsApp send failed: {e}")
-
-
-async def _send_signal(extra, chat_id, message):
-    """Send via signal-cli JSON-RPC API."""
-    try:
-        import httpx
-    except ImportError:
-        return {"error": "httpx not installed"}
-    try:
-        http_url = extra.get("http_url", "http://127.0.0.1:8080").rstrip("/")
-        account = extra.get("account", "")
-        if not account:
-            return {"error": "Signal account not configured"}
-
-        params = {"account": account, "message": message}
-        if chat_id.startswith("group:"):
-            params["groupId"] = chat_id[6:]
-        else:
-            params["recipient"] = [chat_id]
-
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "send",
-            "params": params,
-            "id": f"send_{int(time.time() * 1000)}",
-        }
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(f"{http_url}/api/v1/rpc", json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-            if "error" in data:
-                return _error(f"Signal RPC error: {data['error']}")
-            return {"success": True, "platform": "signal", "chat_id": chat_id}
-    except Exception as e:
-        return _error(f"Signal send failed: {e}")
-
-
 async def _send_email(extra, chat_id, message):
     """Send via SMTP (one-shot, no persistent connection needed)."""
     import smtplib
@@ -685,62 +612,6 @@ async def _send_email(extra, chat_id, message):
         return {"success": True, "platform": "email", "chat_id": chat_id}
     except Exception as e:
         return _error(f"Email send failed: {e}")
-
-
-async def _send_sms(auth_token, chat_id, message):
-    """Send a single SMS via Twilio REST API.
-
-    Uses HTTP Basic auth (Account SID : Auth Token) and form-encoded POST.
-    Chunking is handled by _send_to_platform() before this is called.
-    """
-    try:
-        import aiohttp
-    except ImportError:
-        return {"error": "aiohttp not installed. Run: pip install aiohttp"}
-
-    import base64
-
-    account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
-    from_number = os.getenv("TWILIO_PHONE_NUMBER", "")
-    if not account_sid or not auth_token or not from_number:
-        return {"error": "SMS not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER required)"}
-
-    # Strip markdown — SMS renders it as literal characters
-    message = re.sub(r"\*\*(.+?)\*\*", r"\1", message, flags=re.DOTALL)
-    message = re.sub(r"\*(.+?)\*", r"\1", message, flags=re.DOTALL)
-    message = re.sub(r"__(.+?)__", r"\1", message, flags=re.DOTALL)
-    message = re.sub(r"_(.+?)_", r"\1", message, flags=re.DOTALL)
-    message = re.sub(r"```[a-z]*\n?", "", message)
-    message = re.sub(r"`(.+?)`", r"\1", message)
-    message = re.sub(r"^#{1,6}\s+", "", message, flags=re.MULTILINE)
-    message = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", message)
-    message = re.sub(r"\n{3,}", "\n\n", message)
-    message = message.strip()
-
-    try:
-        from gateway.platforms.base import resolve_proxy_url, proxy_kwargs_for_aiohttp
-        _proxy = resolve_proxy_url()
-        _sess_kw, _req_kw = proxy_kwargs_for_aiohttp(_proxy)
-        creds = f"{account_sid}:{auth_token}"
-        encoded = base64.b64encode(creds.encode("ascii")).decode("ascii")
-        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
-        headers = {"Authorization": f"Basic {encoded}"}
-
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30), **_sess_kw) as session:
-            form_data = aiohttp.FormData()
-            form_data.add_field("From", from_number)
-            form_data.add_field("To", chat_id)
-            form_data.add_field("Body", message)
-
-            async with session.post(url, data=form_data, headers=headers, **_req_kw) as resp:
-                body = await resp.json()
-                if resp.status >= 400:
-                    error_msg = body.get("message", str(body))
-                    return _error(f"Twilio API error ({resp.status}): {error_msg}")
-                msg_sid = body.get("sid", "")
-                return {"success": True, "platform": "sms", "chat_id": chat_id, "message_id": msg_sid}
-    except Exception as e:
-        return _error(f"SMS send failed: {e}")
 
 
 async def _send_mattermost(token, extra, chat_id, message):

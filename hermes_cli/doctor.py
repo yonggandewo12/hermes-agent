@@ -625,7 +625,6 @@ def run_doctor(args):
     if shutil.which("npm"):
         npm_dirs = [
             (PROJECT_ROOT, "Browser tools (agent-browser)"),
-            (PROJECT_ROOT / "scripts" / "whatsapp-bridge", "WhatsApp bridge"),
         ]
         for npm_dir, label in npm_dirs:
             if not (npm_dir / "node_modules").exists():

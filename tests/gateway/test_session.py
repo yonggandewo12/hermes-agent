@@ -274,23 +274,6 @@ class TestBuildSessionContextPrompt:
         assert "Local" in prompt
         assert "machine running this agent" in prompt
 
-    def test_whatsapp_prompt(self):
-        config = GatewayConfig(
-            platforms={
-                Platform.WHATSAPP: PlatformConfig(enabled=True, token=""),
-            },
-        )
-        source = SessionSource(
-            platform=Platform.WHATSAPP,
-            chat_id="15551234567@s.whatsapp.net",
-            chat_type="dm",
-            user_name="Phone User",
-        )
-        ctx = build_session_context(source, config)
-        prompt = build_session_context_prompt(ctx)
-
-        assert "WhatsApp" in prompt or "whatsapp" in prompt.lower()
-
     def test_multi_user_thread_prompt(self):
         """Shared thread sessions show multi-user note instead of single user."""
         config = GatewayConfig(
@@ -543,7 +526,7 @@ class TestLoadTranscriptPreferLongerSource:
         assert result[0]["content"] == "db-q"
 
 
-class TestWhatsAppDMSessionKeyConsistency:
+class TestSessionKeyConsistency:
     """Regression: all session-key construction must go through build_session_key
     so DMs are isolated by chat_id across platforms."""
 
@@ -555,26 +538,6 @@ class TestWhatsAppDMSessionKeyConsistency:
         s._db = None
         s._loaded = True
         return s
-
-    def test_whatsapp_dm_includes_chat_id(self):
-        source = SessionSource(
-            platform=Platform.WHATSAPP,
-            chat_id="15551234567@s.whatsapp.net",
-            chat_type="dm",
-            user_name="Phone User",
-        )
-        key = build_session_key(source)
-        assert key == "agent:main:whatsapp:dm:15551234567@s.whatsapp.net"
-
-    def test_store_delegates_to_build_session_key(self, store):
-        """SessionStore._generate_session_key must produce the same result."""
-        source = SessionSource(
-            platform=Platform.WHATSAPP,
-            chat_id="15551234567@s.whatsapp.net",
-            chat_type="dm",
-            user_name="Phone User",
-        )
-        assert store._generate_session_key(source) == build_session_key(source)
 
     def test_store_creates_distinct_group_sessions_per_user(self, store):
         first = SessionSource(
@@ -625,7 +588,7 @@ class TestWhatsAppDMSessionKeyConsistency:
         assert first_entry.session_id == second_entry.session_id
 
     def test_telegram_dm_includes_chat_id(self):
-        """Non-WhatsApp DMs should also include chat_id to separate users."""
+        """DMs should also include chat_id to separate users."""
         source = SessionSource(
             platform=Platform.TELEGRAM,
             chat_id="99",

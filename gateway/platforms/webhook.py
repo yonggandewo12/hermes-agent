@@ -191,8 +191,6 @@ class WebhookAdapter(BasePlatformAdapter):
             "telegram",
             "discord",
             "slack",
-            "signal",
-            "sms",
         ):
             return await self._deliver_cross_platform(
                 deliver_type, content, delivery

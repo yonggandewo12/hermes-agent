@@ -2149,24 +2149,6 @@ def _setup_mattermost():
         save_env_value("MATTERMOST_HOME_CHANNEL", home_channel)
 
 
-def _setup_whatsapp():
-    """Configure WhatsApp bridge."""
-    print_header("WhatsApp")
-    existing = get_env_value("WHATSAPP_ENABLED")
-    if existing:
-        print_info("WhatsApp: already enabled")
-        return
-
-    print_info("WhatsApp connects via a built-in bridge (Baileys).")
-    print_info("Requires Node.js. Run 'hermes whatsapp' for guided setup.")
-    print()
-    if prompt_yes_no("Enable WhatsApp now?", True):
-        save_env_value("WHATSAPP_ENABLED", "true")
-        print_success("WhatsApp enabled")
-        print_info("Run 'hermes whatsapp' to choose your mode (separate bot number")
-        print_info("or personal self-chat) and pair via QR code.")
-
-
 def _setup_bluebubbles():
     """Configure BlueBubbles iMessage gateway."""
     print_header("BlueBubbles (iMessage)")
@@ -2242,7 +2224,7 @@ def _setup_webhooks():
             return
 
     print()
-    print_warning("⚠  Webhook and SMS platforms require exposing gateway ports to the")
+    print_warning("⚠  Webhook platforms require exposing gateway ports to the")
     print_warning("   internet. For security, run the gateway in a sandboxed environment")
     print_warning("   (Docker, VM, etc.) to limit blast radius from prompt injection.")
     print()
@@ -2285,7 +2267,6 @@ _GATEWAY_PLATFORMS = [
     ("Slack", "SLACK_BOT_TOKEN", _setup_slack),
     ("Matrix", "MATRIX_ACCESS_TOKEN", _setup_matrix),
     ("Mattermost", "MATTERMOST_TOKEN", _setup_mattermost),
-    ("WhatsApp", "WHATSAPP_ENABLED", _setup_whatsapp),
     ("BlueBubbles (iMessage)", "BLUEBUBBLES_SERVER_URL", _setup_bluebubbles),
     ("Webhooks (GitHub, GitLab, etc.)", "WEBHOOK_ENABLED", _setup_webhooks),
 ]
@@ -2329,7 +2310,6 @@ def setup_gateway(config: dict):
         or get_env_value("MATTERMOST_TOKEN")
         or get_env_value("MATRIX_ACCESS_TOKEN")
         or get_env_value("MATRIX_PASSWORD")
-        or get_env_value("WHATSAPP_ENABLED")
         or get_env_value("BLUEBUBBLES_SERVER_URL")
         or get_env_value("WEBHOOK_ENABLED")
     )
@@ -2518,10 +2498,6 @@ def _get_section_config_summary(config: dict, section_key: str) -> Optional[str]
             platforms.append("Discord")
         if get_env_value("SLACK_BOT_TOKEN"):
             platforms.append("Slack")
-        if get_env_value("WHATSAPP_PHONE_NUMBER_ID"):
-            platforms.append("WhatsApp")
-        if get_env_value("SIGNAL_ACCOUNT"):
-            platforms.append("Signal")
         if get_env_value("BLUEBUBBLES_SERVER_URL"):
             platforms.append("BlueBubbles")
         if platforms:
@@ -2608,7 +2584,6 @@ _HIGH_IMPACT_KIND_KEYWORDS = {
     "telegram": "⚠ Telegram — this will point Hermes at your OpenClaw Telegram bot",
     "slack": "⚠ Slack — this will point Hermes at your OpenClaw Slack workspace",
     "discord": "⚠ Discord — this will point Hermes at your OpenClaw Discord bot",
-    "whatsapp": "⚠ WhatsApp — this will point Hermes at your OpenClaw WhatsApp connection",
     "config": "⚠ Config values — OpenClaw settings may not map 1:1 to Hermes equivalents",
     "soul": "⚠ Instruction file — may contain OpenClaw-specific setup/restart procedures",
     "memory": "⚠ Memory/context file — may reference OpenClaw-specific infrastructure",

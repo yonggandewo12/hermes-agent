@@ -2,7 +2,7 @@
 Gateway configuration management.
 
 Handles loading and validating configuration for:
-- Connected platforms (Telegram, Discord, WhatsApp)
+- Connected messaging platforms
 - Home channels for each platform
 - Session reset policies
 - Delivery preferences
@@ -50,14 +50,11 @@ class Platform(Enum):
     LOCAL = "local"
     TELEGRAM = "telegram"
     DISCORD = "discord"
-    WHATSAPP = "whatsapp"
     SLACK = "slack"
-    SIGNAL = "signal"
     MATTERMOST = "mattermost"
     MATRIX = "matrix"
     HOMEASSISTANT = "homeassistant"
     EMAIL = "email"
-    SMS = "sms"
     DINGTALK = "dingtalk"
     API_SERVER = "api_server"
     WEBHOOK = "webhook"
@@ -264,17 +261,8 @@ class GatewayConfig:
             # Platforms that use token/api_key auth
             if config.token or config.api_key:
                 connected.append(platform)
-            # WhatsApp uses enabled flag only (bridge handles auth)
-            elif platform == Platform.WHATSAPP:
-                connected.append(platform)
-            # Signal uses extra dict for config (http_url + account)
-            elif platform == Platform.SIGNAL and config.extra.get("http_url"):
-                connected.append(platform)
             # Email uses extra dict for config (address + imap_host + smtp_host)
             elif platform == Platform.EMAIL and config.extra.get("address"):
-                connected.append(platform)
-            # SMS uses api_key (Twilio auth token) — SID checked via env
-            elif platform == Platform.SMS and os.getenv("TWILIO_ACCOUNT_SID"):
                 connected.append(platform)
             # API Server uses enabled flag only (no token needed)
             elif platform == Platform.API_SERVER:
@@ -604,18 +592,6 @@ def load_gateway_config() -> GatewayConfig:
                 if "reactions" in telegram_cfg and not os.getenv("TELEGRAM_REACTIONS"):
                     os.environ["TELEGRAM_REACTIONS"] = str(telegram_cfg["reactions"]).lower()
 
-            whatsapp_cfg = yaml_cfg.get("whatsapp", {})
-            if isinstance(whatsapp_cfg, dict):
-                if "require_mention" in whatsapp_cfg and not os.getenv("WHATSAPP_REQUIRE_MENTION"):
-                    os.environ["WHATSAPP_REQUIRE_MENTION"] = str(whatsapp_cfg["require_mention"]).lower()
-                if "mention_patterns" in whatsapp_cfg and not os.getenv("WHATSAPP_MENTION_PATTERNS"):
-                    os.environ["WHATSAPP_MENTION_PATTERNS"] = json.dumps(whatsapp_cfg["mention_patterns"])
-                frc = whatsapp_cfg.get("free_response_chats")
-                if frc is not None and not os.getenv("WHATSAPP_FREE_RESPONSE_CHATS"):
-                    if isinstance(frc, list):
-                        frc = ",".join(str(v) for v in frc)
-                    os.environ["WHATSAPP_FREE_RESPONSE_CHATS"] = str(frc)
-
             # Matrix settings → env vars (env vars take precedence)
             matrix_cfg = yaml_cfg.get("matrix", {})
             if isinstance(matrix_cfg, dict):
@@ -738,13 +714,6 @@ def _apply_env_overrides(config: GatewayConfig) -> None:
             config.platforms[Platform.DISCORD] = PlatformConfig()
         config.platforms[Platform.DISCORD].reply_to_mode = discord_reply_mode
     
-    # WhatsApp (typically uses different auth mechanism)
-    whatsapp_enabled = os.getenv("WHATSAPP_ENABLED", "").lower() in ("true", "1", "yes")
-    if whatsapp_enabled:
-        if Platform.WHATSAPP not in config.platforms:
-            config.platforms[Platform.WHATSAPP] = PlatformConfig()
-        config.platforms[Platform.WHATSAPP].enabled = True
-    
     # Slack
     slack_token = os.getenv("SLACK_BOT_TOKEN")
     if slack_token:
@@ -760,26 +729,6 @@ def _apply_env_overrides(config: GatewayConfig) -> None:
             name=os.getenv("SLACK_HOME_CHANNEL_NAME", ""),
         )
     
-    # Signal
-    signal_url = os.getenv("SIGNAL_HTTP_URL")
-    signal_account = os.getenv("SIGNAL_ACCOUNT")
-    if signal_url and signal_account:
-        if Platform.SIGNAL not in config.platforms:
-            config.platforms[Platform.SIGNAL] = PlatformConfig()
-        config.platforms[Platform.SIGNAL].enabled = True
-        config.platforms[Platform.SIGNAL].extra.update({
-            "http_url": signal_url,
-            "account": signal_account,
-            "ignore_stories": os.getenv("SIGNAL_IGNORE_STORIES", "true").lower() in ("true", "1", "yes"),
-        })
-    signal_home = os.getenv("SIGNAL_HOME_CHANNEL")
-    if signal_home and Platform.SIGNAL in config.platforms:
-        config.platforms[Platform.SIGNAL].home_channel = HomeChannel(
-            platform=Platform.SIGNAL,
-            chat_id=signal_home,
-            name=os.getenv("SIGNAL_HOME_CHANNEL_NAME", "Home"),
-        )
-
     # Mattermost
     mattermost_token = os.getenv("MATTERMOST_TOKEN")
     if mattermost_token:
@@ -861,21 +810,6 @@ def _apply_env_overrides(config: GatewayConfig) -> None:
             platform=Platform.EMAIL,
             chat_id=email_home,
             name=os.getenv("EMAIL_HOME_ADDRESS_NAME", "Home"),
-        )
-
-    # SMS (Twilio)
-    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    if twilio_sid:
-        if Platform.SMS not in config.platforms:
-            config.platforms[Platform.SMS] = PlatformConfig()
-        config.platforms[Platform.SMS].enabled = True
-        config.platforms[Platform.SMS].api_key = os.getenv("TWILIO_AUTH_TOKEN", "")
-    sms_home = os.getenv("SMS_HOME_CHANNEL")
-    if sms_home and Platform.SMS in config.platforms:
-        config.platforms[Platform.SMS].home_channel = HomeChannel(
-            platform=Platform.SMS,
-            chat_id=sms_home,
-            name=os.getenv("SMS_HOME_CHANNEL_NAME", "Home"),
         )
 
     # API Server

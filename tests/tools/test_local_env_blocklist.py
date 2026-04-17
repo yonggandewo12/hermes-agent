@@ -117,8 +117,6 @@ class TestProviderEnvBlocklist:
             "TELEGRAM_HOME_CHANNEL": "12345",
             "DISCORD_HOME_CHANNEL": "67890",
             "SLACK_APP_TOKEN": "xapp-secret",
-            "WHATSAPP_ALLOWED_USERS": "+15555550123",
-            "SIGNAL_ACCOUNT": "+15555550124",
             "HASS_TOKEN": "ha-secret",
             "EMAIL_PASSWORD": "email-secret",
             "FIRECRAWL_API_KEY": "fc-secret",

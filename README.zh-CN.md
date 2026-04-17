@@ -20,7 +20,7 @@
 
 <table>
 <tr><td><b>真正可用的终端界面</b></td><td>完整 TUI，支持多行编辑、斜杠命令补全、会话历史、中断并重定向、以及工具输出流式展示。</td></tr>
-<tr><td><b>存在于你的工作流中</b></td><td>可同时接入 Telegram、Discord、Slack、WhatsApp、Signal 和 CLI，由单一 gateway 进程统一驱动。支持语音消息转写与跨平台会话连续性。</td></tr>
+<tr><td><b>存在于你的工作流中</b></td><td>可同时接入 Telegram、Discord、Slack、Email 和 CLI，由单一 gateway 进程统一驱动。支持语音消息转写与跨平台会话连续性。</td></tr>
 <tr><td><b>闭环学习能力</b></td><td>具备 Agent 管理的记忆系统与周期性提醒；复杂任务后可自动生成技能；技能会在使用中自我优化；支持基于 FTS5 的历史会话搜索与 LLM 摘要回忆；集成 <a href="https://github.com/plastic-labs/honcho">Honcho</a> 辩证式用户建模；兼容 <a href="https://agentskills.io">agentskills.io</a> 开放标准。</td></tr>
 <tr><td><b>定时自动化</b></td><td>内置 cron 调度器，可将结果投递到任意平台。日报、夜间备份、每周审计等任务都可以用自然语言配置并无人值守运行。</td></tr>
 <tr><td><b>委派与并行执行</b></td><td>可启动隔离的子代理并行处理多个工作流；也能编写 Python 脚本经 RPC 调用工具，把多步流程压缩为零上下文成本的执行回合。</td></tr>
@@ -83,7 +83,7 @@ hermes doctor       # 诊断问题
 
 ## CLI 与消息平台速查
 
-Hermes 有两个主要入口：一是直接运行 `hermes` 打开终端 UI；二是启动 gateway，然后通过 Telegram、Discord、Slack、WhatsApp、Signal 或 Email 与它交互。进入会话后，很多斜杠命令在两种入口中是共通的。
+Hermes 有两个主要入口：一是直接运行 `hermes` 打开终端 UI；二是启动 gateway，然后通过 Telegram、Discord、Slack 或 Email 与它交互。进入会话后，很多斜杠命令在两种入口中是共通的。
 
 | 操作 | CLI | 消息平台 |
 |---------|-----|---------------------|
@@ -110,7 +110,7 @@ Hermes 有两个主要入口：一是直接运行 `hermes` 打开终端 UI；二
 | [Quickstart](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart) | 2 分钟内完成安装、配置和第一次对话 |
 | [CLI Usage](https://hermes-agent.nousresearch.com/docs/user-guide/cli) | 命令、快捷键、personality、会话管理 |
 | [Configuration](https://hermes-agent.nousresearch.com/docs/user-guide/configuration) | 配置文件、provider、model 与全部选项 |
-| [Messaging Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) | Telegram、Discord、Slack、WhatsApp、Signal、Home Assistant |
+| [Messaging Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) | Telegram、Discord、Slack、Email、Home Assistant |
 | [Security](https://hermes-agent.nousresearch.com/docs/user-guide/security) | 命令审批、DM 配对、容器隔离 |
 | [Tools & Toolsets](https://hermes-agent.nousresearch.com/docs/user-guide/features/tools) | 40+ 工具、toolset 系统、终端后端 |
 | [Skills System](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills) | 程序化记忆、Skills Hub、技能创建 |

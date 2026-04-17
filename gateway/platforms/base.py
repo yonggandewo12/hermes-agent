@@ -1,8 +1,7 @@
 """
 Base platform adapter interface.
 
-All platform adapters (Telegram, Discord, WhatsApp) inherit from this
-and implement the required methods.
+All platform adapters inherit from this and implement the required methods.
 """
 
 import asyncio

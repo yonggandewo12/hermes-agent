@@ -87,14 +87,6 @@ MIGRATION_OPTION_METADATA: Dict[str, Dict[str, str]] = {
         "label": "Slack settings",
         "description": "Import Slack bot/app tokens and allowlist into Hermes .env.",
     },
-    "whatsapp-settings": {
-        "label": "WhatsApp settings",
-        "description": "Import WhatsApp allowlist into Hermes .env.",
-    },
-    "signal-settings": {
-        "label": "Signal settings",
-        "description": "Import Signal account, HTTP URL, and allowlist into Hermes .env.",
-    },
     "provider-keys": {
         "label": "Provider API keys",
         "description": "Import model provider API keys into Hermes .env (requires --migrate-secrets).",
@@ -196,8 +188,6 @@ MIGRATION_PRESETS: Dict[str, set[str]] = {
         "tts-assets",
         "discord-settings",
         "slack-settings",
-        "whatsapp-settings",
-        "signal-settings",
         "model-config",
         "tts-config",
         "shared-skills",
@@ -662,8 +652,6 @@ class Migrator:
         self.run_if_selected("secret-settings", lambda: self.handle_secret_settings(config))
         self.run_if_selected("discord-settings", lambda: self.migrate_discord_settings(config))
         self.run_if_selected("slack-settings", lambda: self.migrate_slack_settings(config))
-        self.run_if_selected("whatsapp-settings", lambda: self.migrate_whatsapp_settings(config))
-        self.run_if_selected("signal-settings", lambda: self.migrate_signal_settings(config))
         self.run_if_selected("provider-keys", lambda: self.handle_provider_keys(config))
         self.run_if_selected("model-config", lambda: self.migrate_model_config(config))
         self.run_if_selected("tts-config", lambda: self.migrate_tts_config(config))
@@ -1095,42 +1083,6 @@ class Migrator:
             self.merge_env_values(additions, "slack-settings", self.source_root / "openclaw.json")
         else:
             self.record("slack-settings", self.source_root / "openclaw.json", self.target_root / ".env", "skipped", "No Slack settings found")
-
-    def migrate_whatsapp_settings(self, config: Optional[Dict[str, Any]] = None) -> None:
-        config = config or self.load_openclaw_config()
-        additions: Dict[str, str] = {}
-        whatsapp = config.get("channels", {}).get("whatsapp", {})
-        if isinstance(whatsapp, dict):
-            allow_from = whatsapp.get("allowFrom", [])
-            if isinstance(allow_from, list):
-                users = [str(u).strip() for u in allow_from if str(u).strip()]
-                if users:
-                    additions["WHATSAPP_ALLOWED_USERS"] = ",".join(users)
-        if additions:
-            self.merge_env_values(additions, "whatsapp-settings", self.source_root / "openclaw.json")
-        else:
-            self.record("whatsapp-settings", self.source_root / "openclaw.json", self.target_root / ".env", "skipped", "No WhatsApp settings found")
-
-    def migrate_signal_settings(self, config: Optional[Dict[str, Any]] = None) -> None:
-        config = config or self.load_openclaw_config()
-        additions: Dict[str, str] = {}
-        signal = config.get("channels", {}).get("signal", {})
-        if isinstance(signal, dict):
-            account = signal.get("account")
-            if isinstance(account, str) and account.strip():
-                additions["SIGNAL_ACCOUNT"] = account.strip()
-            http_url = signal.get("httpUrl")
-            if isinstance(http_url, str) and http_url.strip():
-                additions["SIGNAL_HTTP_URL"] = http_url.strip()
-            allow_from = signal.get("allowFrom", [])
-            if isinstance(allow_from, list):
-                users = [str(u).strip() for u in allow_from if str(u).strip()]
-                if users:
-                    additions["SIGNAL_ALLOWED_USERS"] = ",".join(users)
-        if additions:
-            self.merge_env_values(additions, "signal-settings", self.source_root / "openclaw.json")
-        else:
-            self.record("signal-settings", self.source_root / "openclaw.json", self.target_root / ".env", "skipped", "No Signal settings found")
 
     def handle_provider_keys(self, config: Optional[Dict[str, Any]] = None) -> None:
         config = config or self.load_openclaw_config()
