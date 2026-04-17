@@ -26,10 +26,22 @@ def _default_capture_config_path() -> Path:
     return Path.home() / ".hermes" / "playwright-page-capture.yaml"
 
 
-def run_linked_pages(*, capture_config_path: str, site_id: str, storage_state_path: str, feishu_client, browser_runner, capture_runner) -> list[dict]:
+def run_linked_pages(
+    *,
+    capture_config_path: str,
+    site_id: str,
+    storage_state_path: str | None,
+    feishu_client,
+    browser_runner,
+    capture_runner,
+    match_by: str = "auth_site_id",
+) -> list[dict]:
     from page_capture_config import load_page_capture_config
     config = load_page_capture_config(capture_config_path)
-    linked_pages = [page for page in config.pages if page.auth_site_id == site_id]
+    if match_by == "page_id":
+        linked_pages = [page for page in config.pages if page.page_id == site_id]
+    else:
+        linked_pages = [page for page in config.pages if page.auth_site_id == site_id]
     results = []
     for page in linked_pages:
         capture_result = capture_runner(
@@ -80,12 +92,21 @@ def main() -> int:
         print(json.dumps(result, ensure_ascii=False))
         return 0
 
-    result = run_auth_flow(site)
-    if result["status"] != "success":
-        print(json.dumps(result, ensure_ascii=False))
-        return 0
+# Check if auth config is incomplete (missing required fields)
+    # If incomplete, skip auth and go directly to page capture by page_id
+    auth_incomplete = (
+        not getattr(site, "login_url", None) or
+        not getattr(site, "username", None) or
+        not getattr(site, "password", None)
+    )
 
-    if args.run_linked_pages:
+    if auth_incomplete:
+        result = {
+            "status": "auth_skipped",
+            "site_id": site.site_id,
+            "reason": "incomplete auth config, skipping login",
+            "storage_state_path": None,
+        }
         from page_capture_browser import run_browser_capture
         from run_page_capture import build_feishu_client, run_capture_pipeline
         feishu_client = build_feishu_client(capture_config_path)
@@ -96,6 +117,26 @@ def main() -> int:
             feishu_client=feishu_client,
             browser_runner=run_browser_capture,
             capture_runner=run_capture_pipeline,
+            match_by="page_id",
+        )
+        result["linked_pages"] = linked_pages
+        result["capture_summary"] = summarize_linked_pages(linked_pages)
+    elif args.run_linked_pages:
+        result = run_auth_flow(site)
+        if result["status"] != "success":
+            print(json.dumps(result, ensure_ascii=False))
+            return 0
+        from page_capture_browser import run_browser_capture
+        from run_page_capture import build_feishu_client, run_capture_pipeline
+        feishu_client = build_feishu_client(capture_config_path)
+        linked_pages = run_linked_pages(
+            capture_config_path=capture_config_path,
+            site_id=site.site_id,
+            storage_state_path=result["storage_state_path"],
+            feishu_client=feishu_client,
+            browser_runner=run_browser_capture,
+            capture_runner=run_capture_pipeline,
+            match_by="auth_site_id",
         )
         result["linked_pages"] = linked_pages
         result["capture_summary"] = summarize_linked_pages(linked_pages)

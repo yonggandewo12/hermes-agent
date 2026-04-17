@@ -67,6 +67,23 @@ Playwright 页面抓取，支持两种独立模式：
 }
 ```
 
+### 选择器陷阱：nth-child vs 子元素
+
+当页面结构是「容器 `.item` 里包含值 `<p>` + 标签 `<p>`」时：
+
+```html
+<div class="current-basic___item">
+    <p>66%</p>    <!-- 数值 -->
+    <p>相对湿度</p> <!-- 标签 -->
+</div>
+```
+
+❌ **错误做法**：`.current-basic___item:nth-child(2)` 
+→ `inner_text()` 返回 `"66%\n\n相对湿度"`（值+标签混在一起）
+
+✅ **正确做法**：`.current-basic___item:nth-child(2) p`（加 ` p` 子元素）
+→ `inner_text()` 返回 `"66%"`（纯净数值）
+
 ### storage_state 路径规则（两种模式通用）
 
 | 配置值 | 实际路径 |

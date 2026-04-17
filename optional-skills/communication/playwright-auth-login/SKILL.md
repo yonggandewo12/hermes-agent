@@ -90,6 +90,36 @@ sites:
         url_not_contains: /login
 ```
 
+## 无需登录：直接按 page_id 抓取
+
+如果某个 `site_id` 的 auth 配置不完整（如第三方页面、不需要独立登录的子页面），可以在 `playwright-auth.yaml` 中只填 `site_id`，留空 `login_url` / `username` / `password`。运行时传入 `--run-linked-pages`，CLI 会：
+
+1. 检测到 auth 配置不完整，跳过登录
+2. 按 `page_id`（而非 `auth_site_id`）在 page-capture 配置中查找对应页面
+3. 直接执行页面抓取
+
+page-capture YAML 中对应页面的 `auth_site_id` 可以随意填写（不需要与 auth site_id 一致），匹配完全靠 `page_id == site_id`：
+
+```yaml
+# playwright-page-capture.yaml
+pages:
+  - page_id: weather-bj
+    name: 和风天气-北京
+    url: https://www.qweather.com/weather/beijing-101010100.html
+    storage_state_path: ~/.hermes/stats/console_qweather_com.js
+    auth_site_id: weather-bj   # ← 随意，与 auth site_id 无关
+```
+
+```yaml
+# playwright-auth.yaml
+sites:
+  - site_id: weather-bj         # ← 与 page_id 完全相同
+    name: weather-bj
+    # login_url / username / password 全部留空 → 跳过登录
+```
+
+**注意**：`load_state` 设 `networkidle` 容易超时，建议用 `load` 或 `domcontentloaded`。
+
 ## auth_site_id 关联机制
 
 在 `playwright-page-capture.yaml` 中配置页面时，设置 `auth_site_id`：
@@ -116,6 +146,40 @@ pages:
 | `github_com.js` | `~/.hermes/stats/github_com.js` |
 | `feishu/oc_xxx.js` | `~/.hermes/stats/feishu/oc_xxx.js` |
 | `/tmp/login.json` | `/tmp/login.json`（绝对路径直接用） |
+
+## 跳过登录模式（auth 配置不完整）
+
+如果 `site_id` 的 auth 配置缺少关键字段（`login_url`、`username`、`password` 任一为空），auth 流程会被跳过，直接按 `page_id` 匹配 `playwright-page-capture.yaml` 中的页面进行抓取。
+
+这适用于：站点本身无需单独登录（共享其他站点的 storage_state）、或只需临时抓取一个页面。
+
+```yaml
+# playwright-auth.yaml — weather-bj 配置不完整，跳过登录
+- site_id: weather-bj
+  name: 和风搜天气-北京
+  login_url:          # ← 空，跳过登录
+  storage_state_path: # ← 空，从 page-capture YAML 读取
+  username:
+  password:
+  steps: []
+```
+
+对应的 `playwright-page-capture.yaml` 中配置 `page_id: weather-bj` 和 `storage_state_path` 即可：
+```yaml
+- page_id: weather-bj
+  name: 和风搜天气-北京
+  url: https://www.qweather.com/weather/beijing-101010100.html
+  storage_state_path: ~/.hermes/stats/console_qweather_com.js
+  auth_site_id: weather-bj
+```
+
+运行效果：
+```bash
+/playwright-auth-login --site-id weather-bj --run-linked-pages
+# → {"status": "auth_skipped", "linked_pages": [{"page_id": "weather-bj", "status": "ok", ...}]}
+```
+
+**注意**：`load_state` 不要用 `networkidle`，国内站点容易因 CDN/广告请求导致超时，建议用 `load` 或 `domcontentloaded`。实测 `weather-bj` 页面 `networkidle` → 超时 30s；改为 `domcontentloaded` 后正常。
 
 ## 登录状态返回
 
@@ -146,6 +210,31 @@ cp optional-skills/communication/playwright-auth-login/examples/playwright-auth.
 # 5. 定时巡检（cron）
 hermes -q "/cron add /playwright-auth-login --site-id github_com --run-linked-pages"
 ```
+
+## CLI 直接运行（绕过 slash command）
+
+如果通过 Hermes CLI 执行，需注意：
+
+1. **venv 中 playwright 未预装**。首次需引导 pip 并安装：
+   ```bash
+   cd ~/Documents/project/hermes-agent
+   ./venv/bin/python3 -m ensurepip
+   ./venv/bin/python3 -m pip install playwright
+   ./venv/bin/python3 -m playwright install chromium
+   ```
+
+2. **入口脚本是 `playwright_auth_login.py`**（不是 `playwright_auth_runner.py`）：
+   ```bash
+   cd ~/.hermes/skills/communication/playwright-auth-login
+   ~/Documents/project/hermes-agent/venv/bin/python3 scripts/playwright_auth_login.py \
+     --site-id weather --run-linked-pages
+   ```
+
+3. **关键路径**：
+   - skill 脚本目录：`~/.hermes/skills/communication/playwright-auth-login/scripts/`
+   - 默认 auth 配置：`~/.hermes/playwright-auth.yaml`
+   - 默认 page-capture 配置：`~/.hermes/playwright-page-capture.yaml`
+   - venv Python：`~/Documents/project/hermes-agent/venv/bin/python3`
 
 ## 依赖与前置条件
 
