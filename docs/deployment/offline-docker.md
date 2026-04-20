@@ -50,7 +50,7 @@ Copy the entire `dist/docker/` directory to the offline machine using your prefe
 
 ```bash
 cd /path/to/dist/docker
-sh load-and-run.sh
+./load-and-run.sh
 ```
 
 The script will:

@@ -278,7 +278,7 @@ python -m pytest tests/ -q
 
 ```bash
 cd dist/docker
-sh load-and-run.sh
+./load-and-run.sh
 ```
 
 镜像已包含所有 Python、npm 和 Playwright 依赖，因此离线环境在运行时不需要再下载这些依赖。但 Hermes 的部分能力仍可能因所选模型提供商或工作流而需要访问外部 API 或网络。

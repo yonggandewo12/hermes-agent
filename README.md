@@ -215,7 +215,7 @@ This produces a `dist/docker/` directory containing the image tar, checksum, loa
 
 ```bash
 cd dist/docker
-sh load-and-run.sh
+./load-and-run.sh
 ```
 
 The image includes all Python, npm, and Playwright dependencies, so the offline environment does not need to download them at runtime. Hermes features that rely on external providers or APIs may still require network access depending on your model provider and workflow.
