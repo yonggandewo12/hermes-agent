@@ -264,7 +264,7 @@ python -m pytest tests/ -q
 
 ## 离线 Docker 交付
 
-在联网环境中构建一个包含完整依赖的 Docker 镜像，传输到离线环境后无需任何网络即可加载运行。
+在联网环境中构建一个包含完整依赖的 Docker 镜像，传输到离线环境后，无需在该环境中下载任何 Python、npm 或 Playwright 依赖即可加载运行。
 
 ### 构建（联网机器）
 
@@ -281,7 +281,7 @@ cd dist/docker
 sh load-and-run.sh
 ```
 
-镜像已包含所有 Python、npm 和 Playwright 依赖，运行时无需任何网络连接。
+镜像已包含所有 Python、npm 和 Playwright 依赖，因此离线环境在运行时不需要再下载这些依赖。但 Hermes 的部分能力仍可能因所选模型提供商或工作流而需要访问外部 API 或网络。
 
 ---
 

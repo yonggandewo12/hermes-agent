@@ -201,7 +201,7 @@ pages:
 
 ## Offline Docker Bundle
 
-Build a complete, self-contained Docker image on a network-connected machine, then deploy it in an offline environment with no internet access required.
+Build a complete, self-contained Docker image on a network-connected machine, then deploy it in an offline environment without downloading any Python, npm, or Playwright dependencies there.
 
 ### Build (online machine)
 
@@ -218,7 +218,7 @@ cd dist/docker
 sh load-and-run.sh
 ```
 
-The image includes all Python, npm, and Playwright dependencies — no network access needed at runtime.
+The image includes all Python, npm, and Playwright dependencies, so the offline environment does not need to download them at runtime. Hermes features that rely on external providers or APIs may still require network access depending on your model provider and workflow.
 
 ---
 

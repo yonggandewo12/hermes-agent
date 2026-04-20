@@ -25,6 +25,17 @@ SAFE_TAG="${TAG//\//-}"
 SAFE_TAG="${SAFE_TAG//:/-}"
 TAR_NAME="${SAFE_TAG}.tar"
 
+checksum_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1"
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1"
+  else
+    echo "Error: neither sha256sum nor shasum is available." >&2
+    exit 1
+  fi
+}
+
 # ── Pre-flight checks ─────────────────────────────────────────────────────────
 
 if ! command -v docker &>/dev/null; then
@@ -75,39 +86,40 @@ docker save "$TAG" -o "$OUTPUT_DIR/$TAR_NAME"
 
 # ── SHA256 checksum ───────────────────────────────────────────────────────────
 
-CHECKSUM=$(sha256sum "$OUTPUT_DIR/$TAR_NAME" | awk '{print $1}')
-echo "$CHECKSUM  $TAR_NAME" > "$OUTPUT_DIR/$TAR_NAME.sha256"
+CHECKSUM=$(checksum_file "$OUTPUT_DIR/$TAR_NAME" | cut -d' ' -f1)
+printf '%s  %s\n' "$CHECKSUM" "$TAR_NAME" > "$OUTPUT_DIR/$TAR_NAME.sha256"
 echo "SHA256: $CHECKSUM"
 
 # ── Generate load-and-run.sh ──────────────────────────────────────────────────
 
-cat > "$OUTPUT_DIR/load-and-run.sh" << 'LOADER_EOF'
+cat > "$OUTPUT_DIR/load-and-run.sh" <<LOADER_EOF
 #!/usr/bin/env bash
 #
 # Offline Docker load and run helper.
 #
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TAR_FILE="$(ls "$SCRIPT_DIR"/*.tar 2>/dev/null | head -n1)"
+SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+TAR_FILE="\$SCRIPT_DIR/$TAR_NAME"
+IMAGE_TAG="$TAG"
 
-if [[ -z "$TAR_FILE" ]]; then
-  echo "Error: No .tar file found in $(basename "$SCRIPT_DIR")." >&2
+if [[ ! -f "\$TAR_FILE" ]]; then
+  echo "Error: Tar archive not found: \$(basename "\$TAR_FILE")." >&2
   exit 1
 fi
 
-echo "Loading Docker image from $(basename "$TAR_FILE")..."
-docker load -i "$TAR_FILE"
+echo "Loading Docker image from \$(basename "\$TAR_FILE")..."
+docker load -i "\$TAR_FILE"
 
 echo ""
 echo "=== Image loaded successfully ==="
 echo ""
 echo "Recommended run command:"
 echo ""
-echo "  docker run -it --rm \"
-echo "    -v \$(pwd)/data:/opt/data \"
-echo "    -e OPENAI_API_KEY=your_key_here \"
-echo "    hermes-agent:offline-full"
+echo "  docker run -it --rm \\"
+echo "    -v \$(pwd)/data:/opt/data \\"
+echo "    -e OPENAI_API_KEY=your_key_here \\"
+echo "    \$IMAGE_TAG"
 echo ""
 echo "Adjust volume mounts and environment variables as needed for your deployment."
 LOADER_EOF

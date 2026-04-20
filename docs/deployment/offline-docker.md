@@ -15,7 +15,7 @@ Running `scripts/build_offline_docker_bundle.sh` produces a `dist/docker/` direc
 | `load-and-run.sh` | Helper script that loads the image and prints the recommended `docker run` command |
 | `build-info.txt` | Build metadata (git commit, timestamp, etc.) |
 
-The tar filename is derived from the tag by replacing `/` and `:` with `-`, then appending `.tar`. For example, `hermes-agent:offline-full` produces `hermes-agent-offline-full.tar`.
+The tar filename is derived from the tag by replacing `/` and `:` with `-`, then appending `.tar`. For example, `hermes-agent:offline-full` produces `hermes-agent-offline-full.tar`, while `--tag registry.example.com/hermes-agent:v0.8.0-offline` produces `registry.example.com-hermes-agent-v0.8.0-offline.tar`.
 
 ## Prerequisites
 
@@ -65,7 +65,7 @@ After loading, run the container:
 docker run -it --rm \
   -v $(pwd)/data:/opt/data \
   -e OPENAI_API_KEY=your_key_here \
-  hermes-agent:offline-full
+  <your-offline-tag>
 ```
 
 ### Required Environment Variables
@@ -80,11 +80,20 @@ See `.env.example` for the full list of supported variables.
 
 ## Verification
 
-Verify the image integrity before loading:
+Verify the image integrity before loading. Replace `<tar-filename>` with the archive generated for your `--tag` value, for example `hermes-agent-offline-full.tar`.
+
+Linux:
 
 ```bash
 cd /path/to/dist/docker
-sha256sum -c hermes-agent-offline-full.tar.sha256
+sha256sum -c <tar-filename>.sha256
+```
+
+macOS:
+
+```bash
+cd /path/to/dist/docker
+shasum -a 256 -c <tar-filename>.sha256
 ```
 
 ## Troubleshooting
