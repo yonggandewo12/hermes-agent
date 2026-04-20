@@ -77,7 +77,11 @@ echo "Build metadata written to $OUTPUT_DIR/build-info.txt"
 # ── Docker build ──────────────────────────────────────────────────────────────
 
 echo "Building Docker image: $TAG"
-docker build -f "$DOCKERFILE" -t "$TAG" . --progress=plain
+BUILD_ARGS=(-f "$DOCKERFILE" -t "$TAG" .)
+if docker build --help 2>/dev/null | grep -q -- '--progress'; then
+  BUILD_ARGS+=(--progress=plain)
+fi
+docker build "${BUILD_ARGS[@]}"
 
 # ── Docker save ───────────────────────────────────────────────────────────────
 
