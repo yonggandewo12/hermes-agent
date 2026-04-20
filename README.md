@@ -199,6 +199,27 @@ pages:
     ...
 ```
 
+## Offline Docker Bundle
+
+Build a complete, self-contained Docker image on a network-connected machine, then deploy it in an offline environment with no internet access required.
+
+### Build (online machine)
+
+```bash
+./scripts/build_offline_docker_bundle.sh
+```
+
+This produces a `dist/docker/` directory containing the image tar, checksum, load script, and build metadata. See [docs/deployment/offline-docker.md](docs/deployment/offline-docker.md) for full details.
+
+### Deploy (offline machine)
+
+```bash
+cd dist/docker
+sh load-and-run.sh
+```
+
+The image includes all Python, npm, and Playwright dependencies — no network access needed at runtime.
+
 ---
 
 ## Migrating from OpenClaw
