@@ -10,10 +10,12 @@ Running `scripts/build_offline_docker_bundle.sh` produces a `dist/docker/` direc
 
 | File | Description |
 |------|-------------|
-| `<tag>-offline.tar` | Complete Docker image archive |
-| `<tag>-offline.tar.sha256` | SHA-256 checksum for integrity verification |
+| `<tag-with-/-and-:-replaced-by-->.tar` | Complete Docker image archive |
+| `<tag-with-/-and-:-replaced-by-->.tar.sha256` | SHA-256 checksum for integrity verification |
 | `load-and-run.sh` | Helper script that loads the image and prints the recommended `docker run` command |
 | `build-info.txt` | Build metadata (git commit, timestamp, etc.) |
+
+The tar filename is derived from the tag by replacing `/` and `:` with `-`, then appending `.tar`. For example, `hermes-agent:offline-full` produces `hermes-agent-offline-full.tar`.
 
 ## Prerequisites
 
