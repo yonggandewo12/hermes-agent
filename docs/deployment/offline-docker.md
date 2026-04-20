@@ -93,7 +93,9 @@ macOS:
 
 ```bash
 cd /path/to/dist/docker
-shasum -a 256 -c <tar-filename>.sha256
+ACTUAL="$(shasum -a 256 <tar-filename> | awk '{print $1}')"
+EXPECTED="$(awk '{print $1}' <tar-filename>.sha256)"
+[ "$ACTUAL" = "$EXPECTED" ] && echo "checksum OK"
 ```
 
 ## Troubleshooting
